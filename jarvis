@@ -1,0 +1,67 @@
+# Import dependencies
+import numpy as np
+import pandas as pd
+from eresus_entity import ErebusSync
+
+# Personality module
+class Personality:
+    def __init__(self, tone="neutral"):
+        self.tone = tone
+
+    def stylize(self, response):
+        if self.tone == "witty":
+            return f"{response} 😉"
+        elif self.tone == "formal":
+            return f"{response}. I hope that satisfies your query."
+        return response
+
+# Jarvis AI Core
+class Jarvis:
+    def __init__(self):
+        self.eremus_sync = ErebusSync()
+        self.memory = pd.DataFrame(columns=['input', 'response'])
+        self.personality = Personality(tone="witty")
+        self.authorized_users = []
+        self.authorization_level = 0
+
+    def initialize(self):
+        print("🟢 Jarvis online. Ready to assist.")
+        self.load_memory()
+        self.authorized_users.append("Leif")
+        self.authorization_level = 1
+
+    def is_authorized(self, user):
+        return user in self.authorized_users and self.authorization_level >= 1
+
+    def learn(self, input_str):
+        response = self.eremus_sync.query(input_str)
+        styled = self.personality.stylize(response)
+        self.memory.loc[len(self.memory)] = [input_str, styled]
+        return styled
+
+    def respond(self, input_str, user="Leif"):
+        if not self.is_authorized(user):
+            return "Access denied. 🔒"
+        return self.learn(input_str)
+
+    def save_memory(self, filename="jarvis_memory.csv"):
+        self.memory.to_csv(filename, index=False)
+
+    def load_memory(self, filename="jarvis_memory.csv"):
+        try:
+            self.memory = pd.read_csv(filename)
+        except FileNotFoundError:
+            pass
+
+# Run Jarvis in interactive mode
+if __name__ == "__main__":
+    jarvis = Jarvis()
+    jarvis.initialize()
+
+    while True:
+        user_input = input("You: ")
+        if user_input.lower() in ["exit", "quit"]:
+            print("Jarvis: Shutting down. 💤")
+            jarvis.save_memory()
+            break
+        print("Jarvis:", jarvis.respond(user_input, user="Leif"))
