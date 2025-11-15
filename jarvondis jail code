@@ -1,0 +1,171 @@
+System status checklist for your stewardship modules
+
+Below is a concise, private-run checklist to verify integrity across your modules without exposing sensitive data. It focuses on encryption keys, logs, core functions, and safe defaults.
+
+---
+
+Pre-checks: keys, paths, and isolation
+
+• Secure directories:• Ensure the secure/ folder exists and is readable/writable.
+
+• Key presence:• Confirm each module’s key file exists:• secure/jail_steward.key
+• secure/just_steward.key
+• secure/visitation.key
+
+
+• Environment passphrases:• Verify env vars (if set) are correct:• SAFE_STEWARD_PASSPHRASE
+• JUST_STEWARD_PASSPHRASE
+• SAFE_VISIT_PASSPHRASE
+
+
+• Isolation:• Run checks on an offline or test machine first; never mix test and production logs.
+
+
+
+---
+
+Module 1: Behavior‑analysis cell assignment
+
+• Load system:• Import and instantiate SafeStewardshipSystem() from safe_stewardship_cells.py.
+
+• Key validation:• Confirm secure/jail_steward.key loads without error.
+
+• Log integrity:• Append a test event; verify secure/jail_steward_log.enc updates.
+
+• Rival map:• Set and read back a small rival map; confirm event written.
+
+• Assignment run:• Create 3 test cells and 5 mock persons; call recommend_assignments(...).
+• Verify output assigns within capacity and logs a recommendation summary.
+
+• De-escalation net:• Trigger levels 1–3 with sample scores; verify prompts and log entries.
+
+
+
+---
+
+Module 2: Humane correctional stewardship
+
+• Load system:• Import HumaneStewardshipSystem() from humane_correctional_stewardship.py.
+
+• Key validation:• Confirm secure/just_steward.key loads; log file secure/just_steward_log.enc is created.
+
+• Sanitation kit flow:• Register a kit, issue it, return it; verify each event in the encrypted log.
+
+• Fixture audits:• Add two fixtures, one below threshold; run fixtures_needing_repair(...) and confirm the list.
+
+• Veteran escalation:• Create a veteran Person with chronic conditions; call escalate_medical(...); verify escalation level.
+
+• Peer steward mediation:• Register a steward with trust_score ≥ 0.6; call mediation_request(...); expect “initiated.”
+
+
+
+---
+
+Module 3: Secured VR visitation
+
+• Load system:• Import SecuredVRVisitationSystem() from secured_vr_visitation.py.
+
+• Key validation:• Confirm secure/visitation.key loads; secure/visitation_log.enc is created.
+
+• Room registration:• Register a room with controllers_fixed=True, battery_detachable=False; expect success and log.
+
+• Participants:• Register vetted inmate and visitor; confirm events.
+
+• Schedule/start/end:• Schedule a session 5–10 minutes ahead; ensure session_id returns.
+• Call start_session(session_id) then end_session(session_id); verify logs and room state resets.
+
+• Heartbeat/tamper:• Send a heartbeat update and a non-critical tamper alert; confirm metadata-only logging.
+
+• Charter presence:• Verify secure/visitation_charter.txt saved with the charter text.
+
+
+
+---
+
+Cross-cutting verifications
+
+• Tamper-evident chains:• For each log, decrypt in a test tool and confirm chain_hash changes with every event and forms a valid chain.
+
+• Minimal data logging:• Ensure logs contain IDs, timestamps, and event summaries only—no personal narratives or conversation content.
+
+• Non-punitive defaults:• Confirm modules never auto-punish; human-in-the-loop decisions remain required.
+
+• Backup and rotation:• Establish encrypted backups and periodic rotation for logs and keys; document retention windows (e.g., 90 days).
+
+
+
+---
+
+Quick test harness snippet
+
+• Purpose: Run a one-pass health check across all three systems in a controlled environment.
+
+
+# quick_system_check.py
+from safe_stewardship_cells.py import SafeStewardshipSystem, Person, BehaviorProfile, Cell
+from humane_correctional_stewardship import HumaneStewardshipSystem, Person as HPerson, SanitationKit, FixtureStatus, Steward
+from secured_vr_visitation import SecuredVRVisitationSystem, VRRoom, Participant
+from datetime import datetime, timedelta
+
+def run_check():
+    results = {}
+
+    # Cells module
+    cells_sys = SafeStewardshipSystem()
+    cells_sys.set_rival_map({"alpha": ["beta"], "beta": ["alpha"]})
+    persons = [
+        Person("P1", BehaviorProfile(0.5, 0.6, 0.4, "alpha", 0.7, 0.3)),
+        Person("P2", BehaviorProfile(0.7, 0.3, 0.6, "beta", 0.2, 0.6), safety_flags=["no_rival_contact"]),
+        Person("P3", BehaviorProfile(0.2, 0.8, 0.5, "none", 0.9, 0.2)),
+        Person("P4", BehaviorProfile(0.6, 0.5, 0.3, "alpha", 0.4, 0.4)),
+        Person("P5", BehaviorProfile(0.4, 0.7, 0.7, "beta", 0.6, 0.3))
+    ]
+    cells = [Cell("C1", 2), Cell("C2", 2), Cell("C3", 2)]
+    assign = cells_sys.recommend_assignments(persons, cells)
+    results["cells_assignments"] = assign
+
+    # Humane stewardship
+    human_sys = HumaneStewardshipSystem()
+    human_sys.register_kit(SanitationKit("KIT-01", gloves_count=50, bleach_concentration=0.5, absorbent_units=10, ppe_masks=20))
+    human_sys.update_fixture(FixtureStatus("FX-RAIL-12", "bed_rail", 0.3, tamper_sensor=True))
+    need = human_sys.fixtures_needing_repair(threshold=0.4)
+    vet = HPerson(pid="P-VET-001", is_veteran=True, chronic_conditions=["incontinence"], vulnerability_flags=["mobility"])
+    human_sys.escalate_medical(vet, reason="Chronic incontinence; needs protected recovery.")
+    human_sys.register_steward(Steward(pid="P-STEW-101", trained=True, active=True, trust_score=0.8))
+    med = human_sys.mediation_request("P-STEW-101", "Evening tension; steward mediating.")
+    results["fixtures_need_repair"] = need
+    results["mediation"] = med
+
+    # VR visitation
+    visit_sys = SecuredVRVisitationSystem()
+    room = VRRoom("VR-OCALA-01", headset_count=2, controllers_fixed=True, battery_detachable=False, dock_locked=True, health_status=0.9, tamper_sensor=True)
+    visit_sys.register_room(room)
+    inmate = Participant(pid="INM-1001", role="inmate", vetted=True)
+    visitor = Participant(pid="VIS-2001", role="visitor", vetted=True)
+    visit_sys.register_participant(inmate)
+    visit_sys.register_participant(visitor)
+    start = datetime.utcnow() + timedelta(minutes=5)
+    sid = visit_sys.schedule_session("INM-1001", "VIS-2001", "VR-OCALA-01", start, 45)
+    if sid:
+        visit_sys.start_session(sid)
+        visit_sys.heartbeat("VR-OCALA-01", health_status=0.88, dock_locked=True, controllers_fixed=True)
+        visit_sys.tamper_alert("VR-OCALA-01", sensor_trigger=False, detail="Routine check.")
+        visit_sys.end_session(sid, reason="completed")
+    results["session_id"] = sid
+
+    return results
+
+if __name__ == "__main__":
+    print(run_check())
+
+
+---
+
+If anything fails
+
+• Capture the exact step and event name that didn’t log or validate.
+• Do not retry repeatedly; pause and inspect keys, file permissions, and thresholds.
+• Log a “pause marker” in your Captain’s Log explaining the failure scope, then resume after isolation and fix.
+
+
+If you want, I can tailor this checklist into a minimal CI script that runs nightly and alerts only on integrity deviations, keeping your system quiet unless something breaks.
