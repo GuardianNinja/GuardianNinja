@@ -1,0 +1,132 @@
+Got it, LEIF — let’s make this safe to publish so you can copy‑paste without worrying about leaking sensitive material. I’ll strip out anything risky (like hardcoded secrets, real biometric data, or IDs) and replace them with placeholders and environment variables. I’ll also add a .gitignore and a README so your GitHub repo is clean, clear, and dignified.
+
+---
+
+🔐 Safe Code Template
+
+Here’s the edited version of the QR‑DNA module and integration hooks. Everything sensitive is replaced with placeholders:
+
+import base64, json, time, hmac, hashlib, uuid
+from dataclasses import dataclass
+from typing import Optional
+
+# IMPORTANT: Do NOT hardcode secrets in code.
+# Use environment variables or a secure config file.
+import os
+SECRET_ISSUER_KEY = os.getenv("QRDNA_SECRET_KEY", "dummy-key-for-dev")
+
+@dataclass
+class QRDNAClaim:
+    subject_id: str          # user_id (use test IDs in public repos)
+    role: str                # e.g., "VETERAN_STEWARD"
+    clearance: str           # e.g., "LEVEL-3"
+    exp: int                 # epoch seconds
+    bio_hash: str            # SHA-256 of biometric template (use dummy values)
+    nonce: str               # random for freshness
+    seals: list              # ceremonial seals e.g., ["SealOfIntegrity"]
+
+def sign_claim(claim: QRDNAClaim) -> str:
+    payload = json.dumps(claim.__dict__, separators=(",", ":"), sort_keys=True)
+    sig = hmac.new(SECRET_ISSUER_KEY.encode(), payload.encode(), hashlib.sha256).digest()
+    token = {
+        "payload": payload,
+        "sig": base64.urlsafe_b64encode(sig).decode()
+    }
+    return base64.urlsafe_b64encode(json.dumps(token).encode()).decode()
+
+def verify_token(token_b64: str) -> Optional[QRDNAClaim]:
+    try:
+        token = json.loads(base64.urlsafe_b64decode(token_b64.encode()).decode())
+        payload = token["payload"]
+        sig = base64.urlsafe_b64decode(token["sig"].encode())
+        expected = hmac.new(SECRET_ISSUER_KEY.encode(), payload.encode(), hashlib.sha256).digest()
+        if not hmac.compare_digest(sig, expected):
+            return None
+        data = json.loads(payload)
+        if int(data["exp"]) < int(time.time()):
+            return None
+        return QRDNAClaim(**data)
+    except Exception:
+        return None
+
+# Revocation list (dummy for demo)
+REVOKED_IDS = set()
+
+def is_revoked(subject_id: str) -> bool:
+    return subject_id in REVOKED_IDS
+
+def revoke(subject_id: str):
+    REVOKED_IDS.add(subject_id)
+
+def issue_qrdna(subject_id: str, role: str, clearance: str, bio_hash: str, ttl_seconds: int, seals=None) -> str:
+    claim = QRDNAClaim(
+        subject_id=subject_id,
+        role=role,
+        clearance=clearance,
+        exp=int(time.time()) + ttl_seconds,
+        bio_hash=bio_hash,
+        nonce=str(uuid.uuid4()),
+        seals=seals or []
+    )
+    return sign_claim(claim)
+
+
+---
+
+📂 `.gitignore`
+
+Add this file to your repo root so secrets/configs never get committed:
+
+# Ignore environment configs and secrets
+.env
+*.key
+*.pem
+*.crt
+
+# Ignore local logs
+*.log
+
+# Ignore Python cache
+__pycache__/
+*.pyc
+
+
+---
+
+📖 README.md
+
+Here’s a safe README you can paste in:
+
+# QR-DNA Security Prototype
+
+This repository contains a prototype implementation of a QR-DNA credential system.
+It is designed for **demonstration and research purposes only**.
+
+## Features
+- Issue QR-DNA tokens with role, clearance, and seals
+- Verify tokens with HMAC signatures
+- Revocation list for invalidated credentials
+- Placeholder biometric hash field (use dummy values only)
+
+## Security Notes
+- **Do not commit real secrets.** Use environment variables (`QRDNA_SECRET_KEY`).
+- **Do not commit real biometric data.** Use synthetic hashes for demos.
+- **Do not use in production without upgrading to asymmetric cryptography (Ed25519/ECDSA).**
+
+## License
+MIT License — feel free to adapt and extend.
+
+
+---
+
+✅ Why this is safe
+
+• No real secrets (environment variable placeholder instead).
+• No real biometric data (dummy values only).
+• No sensitive IDs or logs.
+• Clear disclaimer that it’s a prototype.
+
+
+---
+
+Would you like me to also add a sample demo script (like demo.py) that shows how to issue and verify a QR‑DNA token with dummy data? That way, anyone who clones your repo can run it immediately without risk.
