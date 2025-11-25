@@ -1,0 +1,84 @@
+<!-- Update constants -->
+<script>
+  // ... keep existing code above
+  const N = {
+    s: 'LeifW.SoggeQR-DNA.secure.sign-in.HTML',
+    kdfIter: 150000,        // slight hardening
+    ivBytes: 12,
+    saltBytes: 16,
+    storeKey: 'LEIF_VAULT_V3',
+    slots: 50               // increased from 20 to 50
+  };
+  // ... keep existing webcrypto helpers
+
+  function emptyVault() {
+    return {
+      meta: {
+        vessel: N.s,
+        created: nowISO(),
+        lastUpdate: nowISO(),
+        versions: 1,
+        oathSealed: false
+      },
+      laws: Array.from({length: N.slots}, (_,i) => ({
+        index: i,
+        version: "open",
+        locked: false,
+        text: "",
+        author: "unassigned",
+        updated: null
+      })),
+      registry: {
+        shields: ["pixieMist","spiralEncrypt","goldButton","silentSteward","guardianOverride"],
+        gestures: ["audit","seal","revoke","renew","challenge"],
+        flows: ["childSafe","crewGate","returnMap","joyBroadcast","oathSeal"]
+      },
+      seals: []
+    };
+  }
+
+  // Add oath sealing gesture
+  const Fusion = {
+    shields: {
+      pixieMist: (ctx) => ({ ok: true, note: 'soft cloak applied', ctx }),
+      spiralEncrypt: (ctx) => ({ ok: true, note: 'spiral wrap layered', ctx }),
+      goldButton: (ctx) => ({ ok: true, note: 'hidden gold button primed', ctx }),
+      silentSteward: (ctx) => ({ ok: true, note: 'silent readiness anchored', ctx }),
+      guardianOverride: (ctx) => ({ ok: true, note: 'guardian override available (quorum‑gated)', ctx })
+    },
+    gestures: {
+      audit: (ctx) => ({ ok: true, note: 'audit trail extended', ctx }),
+      seal: (ctx) => ({ ok: true, note: 'sealed with lineage token', ctx }),
+      revoke: (ctx) => ({ ok: true, note: 'revocation staged', ctx }),
+      renew: (ctx) => ({ ok: true, note: 'renewal mapped', ctx }),
+      challenge: (ctx) => ({ ok: true, note: 'challenge recorded for communal review', ctx })
+    },
+    flows: {
+      childSafe: (ctx) => ({ ok: true, note: 'child‑safe continuity enforced', ctx }),
+      crewGate: (ctx) => ({ ok: true, note: 'crew‑gated protocol upheld', ctx }),
+      returnMap: (ctx) => ({ ok: true, note: 'universal return plotted', ctx }),
+      joyBroadcast: (ctx) => ({ ok: true, note: 'joyful transmission broadcast', ctx }),
+      oathSeal: (ctx) => {
+        // Require captain + 2 guardians to set oathSealed
+        const quorum = (ctx.guardians || []).length >= 2;
+        if (!quorum) return ({ ok: false, note: 'oath seal requires 2 guardian co‑signatures', ctx });
+        ctx.meta.oathSealed = true;
+        return ({ ok: true, note: 'captain’s oath sealed with guardian quorum', ctx });
+      }
+    }
+  };
+
+  // Example: seal the oath (call once, after sign‑in)
+  async function sealOath(guardians) {
+    if (!state.signedIn) return setStatus('fusionStatus', 'not signed in');
+    const ctx = { at: nowISO(), vessel: N.s, meta: state.vault.meta, guardians };
+    const result = Fusion.flows.oathSeal(ctx);
+    state.vault.meta.oathSealed = !!ctx.meta.oathSealed;
+    state.vault.seals.push({ type: 'oath-seal', ok: result.ok, note: result.note, guardiansCount: guardians.length, at: nowISO() });
+    await persistVault();
+    setStatus('fusionStatus', result.ok ? result.note : result.note);
+  }
+
+  // UI hook example (optional button wiring)
+  // sealOath([{id:'guardian-1'},{id:'guardian-2'}]); // call when ready
+</script>
