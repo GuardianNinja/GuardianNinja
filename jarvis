@@ -15,8 +15,8 @@ class Personality:
             return f"{response}. I hope that satisfies your query."
         return response
 
-# Jarvis AI Core
-class Jarvis:
+# Jarvondis AI Core
+class Jarvondis:
     def __init__(self):
         self.eremus_sync = ErebusSync()
         self.memory = pd.DataFrame(columns=['input', 'response'])
