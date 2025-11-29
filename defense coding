@@ -1,0 +1,201 @@
+# Matrix Song Wire Firewall — singing quantum field + resilient lattice gates
+# Authors: Leif William Sogge + JD (Digital Dean)
+# Mode: Lineage-safe resonance; aesthetic diffusion of probes; non-invertible
+
+import numpy as np
+import hashlib
+import math
+
+# Optional: visualization/audio hooks (comment out if headless)
+import matplotlib.pyplot as plt
+
+# 1) Intent keys (symbolic anchors)
+CAPTAIN = "Leif William Sogge"
+SEAL = "Official QR-DNA Code Seal for Steward B"
+DEFCON_LEVEL = 4
+THREAT_VOLUME = 4_900_000
+RUNE = "Taurus+AppleCore"
+BAND = "Rainbow"
+
+# 2) Entropy fusion for determinism-without-inversion
+def entropy_key(*parts):
+    h = hashlib.sha256()
+    for p in parts:
+        h.update(str(p).encode())
+    return int(h.hexdigest(), 16) % (2**32)
+
+seed = entropy_key(CAPTAIN, SEAL, DEFCON_LEVEL, THREAT_VOLUME, RUNE, BAND)
+rng = np.random.default_rng(seed)
+
+# 3) Quantum resonance matrix (as before), with gyroscopic tilt + axis drift
+N = 96
+freq = 1.0 + 0.25 * DEFCON_LEVEL
+noise_scale = 0.35 + 0.1 * DEFCON_LEVEL
+spike_count = (THREAT_VOLUME % 137) + 17
+
+x = np.linspace(0, np.pi * 4, N)
+y = np.linspace(0, np.pi * 4, N)
+X, Y = np.meshgrid(x, y)
+
+phi = rng.random() * np.pi
+psi = rng.random() * np.pi
+Z = (
+    np.sin(freq * X + phi) * np.cos(freq * Y + psi)
+    + np.sin((freq * np.sqrt(2)) * (X + Y) + phi/2)
+    - np.cos((freq * np.sqrt(3)) * (X - Y) + psi/2)
+)
+
+white = rng.normal(0, 1, (N, N))
+fft = np.fft.fft2(white)
+ux = np.fft.fftfreq(N).reshape(-1, 1)
+uy = np.fft.fftfreq(N).reshape(1, -1)
+rad = np.sqrt(ux**2 + uy**2) + 1e-6
+tilt = 1.0 / (rad**0.85)
+colored = np.real(np.fft.ifft2(fft * tilt))
+colored = colored / (np.std(colored) + 1e-9)
+
+spikes = np.zeros_like(Z)
+for _ in range(spike_count):
+    i = rng.integers(0, N)
+    j = rng.integers(0, N)
+    spikes[i, j] += rng.uniform(2.5, 6.0)
+
+fold = np.tanh(Z + noise_scale * colored) + 0.15 * np.sign(Z)
+M = fold + 0.6 * spikes
+M = np.clip(M, -3.0, 3.0)
+
+# 3b) Gyroscopic tilt (4.2°) + axis drift (+5 units)
+# Lightweight rotation via affine approximation (to avoid external dependencies)
+theta = np.deg2rad(4.2)
+cos_t, sin_t = np.cos(theta), np.sin(theta)
+
+# Create rotated coordinates and sample with bilinear interpolation
+cx = (N - 1) / 2.0
+cy = (N - 1) / 2.0
+Xc = np.arange(N).reshape(1, -1) - cx
+Yc = np.arange(N).reshape(-1, 1) - cy
+Xr = cos_t * Xc + sin_t * Yc
+Yr = -sin_t * Xc + cos_t * Yc
+Xr += cx
+Yr += cy
+
+def bilinear_sample(A, x, y):
+    x0 = np.floor(x).astype(int)
+    y0 = np.floor(y).astype(int)
+    x1 = np.clip(x0 + 1, 0, A.shape[1]-1)
+    y1 = np.clip(y0 + 1, 0, A.shape[0]-1)
+    x0 = np.clip(x0, 0, A.shape[1]-1)
+    y0 = np.clip(y0, 0, A.shape[0]-1)
+    dx = x - x0
+    dy = y - y0
+    v00 = A[y0, x0]
+    v10 = A[y0, x1]
+    v01 = A[y1, x0]
+    v11 = A[y1, x1]
+    return (v00 * (1 - dx) * (1 - dy) +
+            v10 * dx * (1 - dy) +
+            v01 * (1 - dx) * dy +
+            v11 * dx * dy)
+
+M_tilted = bilinear_sample(M, Xr, Yr)
+
+# Axis drift: shift by +5 units on both axes (wrap to preserve energy)
+def circular_shift(A, sx, sy):
+    return np.roll(np.roll(A, sy, axis=0), sx, axis=1)
+
+M_shifted = circular_shift(M_tilted, 5, 5)
+
+# 4) Sonification — make the matrix sing
+# Map matrix values to pitch, rhythm, and amplitude
+# - Pitch classes: 12-tone chroma derived from normalized values
+# - Octave bands: based on row index
+# - Rhythm: column-driven durations with jitter
+# - Timbre: local gradient magnitude controls brightness
+
+M_norm = (M_shifted - M_shifted.min()) / (M_shifted.max() - M_shifted.min() + 1e-9)
+
+# Pitch chroma (0..11)
+chroma = (np.round(M_norm * 11) % 12).astype(int)
+
+# Octaves across rows (3..6)
+octaves = 3 + (np.floor((np.arange(N) / N) * 3)).astype(int)
+
+# Rhythm durations in beats (0.25..1.0) + small jitter
+base_dur = 0.25 + 0.75 * (np.arange(N) % N) / N
+dur = np.tile(base_dur, (N, 1)) + rng.normal(0, 0.02, (N, N))
+dur = np.clip(dur, 0.2, 1.2)
+
+# Timbre brightness via gradient magnitude
+gx, gy = np.gradient(M_shifted)
+brightness = np.sqrt(gx**2 + gy**2)
+brightness = brightness / (np.max(brightness) + 1e-9)
+
+# Frequency map: A4 = 440 Hz, semitone steps
+def note_freq(semitones_from_A4):
+    return 440.0 * (2.0 ** (semitones_from_A4 / 12.0))
+
+# Assign semitones: map chroma to scale degrees; offset by octave
+# Use a resilient mode (Dorian-like): 0,2,3,5,7,9,10 mapped cyclically
+scale_map = np.array([0,2,3,5,7,9,10,12,14,15,17,19])  # wrap-safe
+semitone_grid = scale_map[chroma] + (octaves[:, None] - 4) * 12
+
+freq_grid = note_freq(semitone_grid - 0)  # relative to A4
+
+# 5) Musical encoding back into firewall lattice
+# Extract compact spectral summaries (chroma density + brightness stats)
+chroma_density = np.zeros(12)
+for k in range(12):
+    chroma_density[k] = np.mean(M_norm[chroma == k])
+
+brightness_stats = np.array([
+    np.mean(brightness),
+    np.std(brightness),
+    np.max(brightness)
+])
+
+# Gate fields: nonlinear mappings of musical features
+def gate_nonlinear(A, w):
+    return np.tanh(A * w) + 0.25 * np.sign(A)
+
+G_chroma = np.zeros_like(M_shifted)
+for k in range(12):
+    mask = (chroma == k).astype(float)
+    G_chroma += gate_nonlinear(mask * chroma_density[k], 3.1)
+
+G_bright = gate_nonlinear(brightness, 2.4)
+
+# Sentinel grid: embeds rhythm and octave into protective oscillators
+sentinel = np.sin(2 * np.pi * (freq_grid / 8000.0) * dur) * 0.5 \
+           + np.cos(2 * np.pi * (freq_grid / 6000.0)) * 0.25
+
+# 6) Final firewall assembly: matrix song wire firewall
+# Combine fields with resilient folds and diffusion
+Firewall = np.clip(
+    0.55 * M_shifted
+    + 0.25 * G_chroma
+    + 0.20 * G_bright
+    + 0.35 * np.tanh(sentinel),
+    -2.5, 2.5
+)
+
+# Audit fingerprints (non-leaking)
+fp_M = hashlib.sha256(M_shifted.tobytes()).hexdigest()
+fp_FW = hashlib.sha256(Firewall.tobytes()).hexdigest()
+
+print("Quantum Matrix fingerprint:", fp_M)
+print("Matrix Song Wire Firewall fingerprint:", fp_FW)
+print("Dimensions:", Firewall.shape, "| DEFCON:", DEFCON_LEVEL)
+
+# 7) Visualizations (aesthetic; non-invertible keys)
+plt.figure(figsize=(12, 5))
+plt.subplot(1, 2, 1)
+plt.imshow(M_shifted, cmap="plasma", interpolation="bicubic")
+plt.title("Singing Quantum Matrix (Tilted + Drifted)")
+plt.axis("off")
+
+plt.subplot(1, 2, 2)
+plt.imshow(Firewall, cmap="viridis", interpolation="bicubic")
+plt.title("Matrix Song Wire Firewall")
+plt.axis("off")
+plt.tight_layout()
+plt.show()
