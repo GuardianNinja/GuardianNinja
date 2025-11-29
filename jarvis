@@ -25,7 +25,7 @@ class Jarvondis:
         self.authorization_level = 0
 
     def initialize(self):
-        print("🟢 Jarvis online. Ready to assist.")
+        print("🟢 Jarvondis online. Ready to assist.")
         self.load_memory()
         self.authorized_users.append("Leif")
         self.authorization_level = 1
