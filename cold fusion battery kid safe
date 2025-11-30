@@ -1,0 +1,33 @@
+# --- New tunables for the three ---
+R0 = 0.12                 # ohms (demo-scale)
+a_T = 0.004               # per K sensitivity of resistance
+a_SOC = 1.2               # SOC curvature factor
+k_dUdT = -2.0e-4          # V/K (entropic slope, modest magnitude)
+
+epsilon = 0.85
+sigma = 5.670374419e-8
+F_view = 0.75             # view factor (space mode orientation)
+A_eff = 0.012             # m^2 effective radiating area
+
+# Helper: dynamic internal resistance
+def R_int(T, SOC):
+    return R0 * (1 + a_T * (T - 296.0)) * (1 + a_SOC * (0.5 - SOC)**2)
+
+# Helper: entropic heat term
+def P_entropic(I, T):
+    return I * T * k_dUdT
+
+# In your loop, compute I from throttled power (bounded by BMS limit)
+I = P_load_throttled / max(V_nom, 3.3)   # guard minimum voltage
+
+# Ohmic and entropic heating
+Rdyn = R_int(T, SOC)
+P_ohmic = (I**2) * Rdyn
+P_ent = P_entropic(I, T)
+
+# Radiative cooling (space-aware)
+Prad = epsilon * sigma * F_view * A_eff * (T**4 - T_env**4)
+
+# Thermal update with new terms
+dTdt = (P_ohmic + P_ent + P_harv - P_load_throttled - Prad) / C_th
+T = T + dTdt * dt
