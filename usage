@@ -1,0 +1,2 @@
+python -m bugbusters.main --map examples/demo_house_map.json --child-safe true --report out/report.json
+python -m bugbusters.game --map examples/demo_house_map.json
