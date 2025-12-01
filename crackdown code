@@ -1,0 +1,95 @@
+import math
+import random
+from typing import List, Any, Dict, Tuple
+
+def is_number(x):
+    return isinstance(x, (int, float)) and not isinstance(x, bool)
+
+def deltas(seq: List[float]) -> List[float]:
+    return [seq[i+1] - seq[i] for i in range(len(seq)-1)]
+
+def ratios(seq: List[float]) -> List[float]:
+    r = []
+    for i in range(len(seq)-1):
+        a, b = seq[i], seq[i+1]
+        if a == 0:
+            r.append(math.inf if b != 0 else 1.0)
+        else:
+            r.append(b / a)
+    return r
+
+def approx_equal(a, b, tol=1e-9):
+    return abs(a - b) <= tol
+
+def detect_arithmetic(seq: List[float], tol=1e-9) -> Tuple[bool, float]:
+    if len(seq) < 2: return False, 0.0
+    d = deltas(seq)
+    base = d[0]
+    ok = all(approx_equal(x, base, tol) for x in d)
+    return ok, base
+
+def detect_geometric(seq: List[float], tol=1e-9) -> Tuple[bool, float]:
+    if len(seq) < 2: return False, 0.0
+    r = ratios(seq)
+    base = r[0]
+    # Guard against inf and NaN ratios
+    if math.isinf(base) or math.isnan(base): 
+        return False, base
+    ok = all((not math.isinf(x)) and (not math.isnan(x)) and approx_equal(x, base, tol) for x in r)
+    return ok, base
+
+def kmp_prefix_function(arr: List[Any]) -> List[int]:
+    """Generic prefix function for periodicity over hashable items."""
+    pi = [0]*len(arr)
+    j = 0
+    for i in range(1, len(arr)):
+        while j > 0 and arr[i] != arr[j]:
+            j = pi[j-1]
+        if arr[i] == arr[j]:
+            j += 1
+        pi[i] = j
+    return pi
+
+def minimal_period(arr: List[Any]) -> int:
+    if not arr: return 0
+    pi = kmp_prefix_function(arr)
+    n = len(arr)
+    k = n - pi[-1]
+    return k if n % k == 0 else 0
+
+def sideways_sample(seq: List[Any], samples=8) -> List[Tuple[int, Any]]:
+    idxs = list(range(len(seq)))
+    random.shuffle(idxs)
+    take = idxs[:min(samples, len(seq))]
+    return sorted((i, seq[i]) for i in take)
+
+def analyze_nonsequential(seq: List[Any]) -> Dict[str, Any]:
+    # Numeric projection
+    num_seq = [float(x) for x in seq if is_number(x)]
+    # Sideways sampling
+    sample = sideways_sample(seq, samples=8)
+    # Deltas/ratios and trend detection
+    d = deltas(num_seq) if len(num_seq) >= 2 else []
+    r = ratios(num_seq) if len(num_seq) >= 2 else []
+    ari_ok, ari_diff = detect_arithmetic(num_seq)
+    geo_ok, geo_ratio = detect_geometric(num_seq)
+    # Periodicity over raw seq (supports symbols)
+    period = minimal_period(seq)
+    # Anomalies: positions that violate strongest detected pattern
+    anomalies = []
+    if ari_ok and len(num_seq) >= 3:
+        for i in range(len(num_seq)-1):
+            if not approx_equal(num_seq[i+1] - num_seq[i], ari_diff):
+                anomalies.append({"i": i, "type": "arithmetic_break"})
+    elif geo_ok and len(num_seq) >= 3:
+        for i in range(len(num_seq)-1):
+            if num_seq[i] == 0: 
+                if num_seq[i+1] != 0:
+                    anomalies.append({"i": i, "type": "geometric_break_div0"})
+            else:
+                if not approx_equal(num_seq[i+1] / num_seq[i], geo_ratio):
+                    anomalies.append({"i": i, "type": "geometric_break"})
+    return {
+        "sideways_sample": sample,
+        "numeric_len": len(num_seq),
+        "arithmetic
