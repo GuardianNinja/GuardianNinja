@@ -1,0 +1,18 @@
+# Cyber Busters: Family Containment Baton (Prototype)
+
+A joyful, lineage-safe browser game where kids twirl musical batons to emit pulses that attract “rogue AI sprites” into a containment node. It’s play-first, teaching gentle guardianship without fear or idolization.
+
+## How to play
+- Click and drag to twirl the baton.
+- Press Space to emit a containment pulse.
+- Rogue sprites are attracted to pulses and can be captured by guiding them into the containment node.
+- Keep sprites away from the “home devices” zone; the firewall aura weakens if they get close.
+
+## Run locally
+Just open `index.html` in a browser—no build step needed.
+
+## Notes
+This is a playful simulation for education and joy. It does not provide real cybersecurity effects. Extend it into rituals, park play, and family co-op modes as you like.
+
+## License
+MIT — nonprofit-friendly, remixable.
