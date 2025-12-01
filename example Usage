@@ -1,0 +1,17 @@
+python rna_cli.py AUGGCUUAA --mode revcomp
+# Output:
+# UUAAGCCAU
+# GC=0.444
+# codons: AUG GCU UAA
+
+python rna_cli.py AUGGCUUAA --mode translate
+# Output:
+# MA*
+# GC=0.444
+# codons: AUG GCU UAA
+
+python rna_cli.py AUGGCUUAA --mode translate_rc
+# Output:
+# LSP
+# GC=0.444
+# codons: AUG GCU UAA
