@@ -1,0 +1,18 @@
+
+---
+
+### Setup and deployment
+
+- **Environment:** Node.js 18+  
+- **Security hardening:** Put behind TLS, enforce IP allow-lists for your upstream gateway, rotate HMAC secrets, and disable any binary proxying.  
+- **Extensibility:** You can add ML or signature databases later; the current pipeline is fast, deterministic, and transparent.
+
+---
+
+### Next steps
+
+- **Customization:** Provide your carrier/gateway’s webhook format and we can tailor the validators and signature scheme.  
+- **On-device integration:** If you’re building a mobile app, call this service before storing or displaying messages.  
+- **Audits:** Wire quarantine logs to a SIEM for real-time monitoring.
+
+If you want this in a different language (Swift/Kotlin/Rust) or as a local library for iOS/Android, say the word and I’ll port it.
