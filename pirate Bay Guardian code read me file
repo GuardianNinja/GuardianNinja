@@ -1,0 +1,20 @@
+# Space Leaf Guardianship Framework
+
+## Purpose
+Lineage-safe security and stewardship modules: network firewall blocks, child-safe energy protocols, and self-healing audit loops.
+
+## Quick start
+- Security firewall: `security/` (DNS, hosts, uBlock lists)
+- Sponge framework: `framework/infinity_sponge/` (library + examples)
+- Apps: `apps/` (Captain AI, Jarvis/Jarvondis)
+- Protocols: `protocols/` (QR-DNA, kid-safe energy)
+
+## Ethics & safety
+- Zero tolerance for harm, piracy enablement, or weaponization.
+- Child-safe design by default; adult-only features gated and separate.
+
+## License
+See `LICENSE`. Contributions must preserve lineage safety and child-safe guarantees.
+
+## Security
+See `SECURITY.md`. Report vulnerabilities via the listed channel.
