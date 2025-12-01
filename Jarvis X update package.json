@@ -1,0 +1,14 @@
+{
+  "name": "jarvis-x-scrubber",
+  "version": "1.0.0",
+  "description": "Pre-scrub incoming messages to prevent uploads, malware, spyware, and ghost/mirror AI markers.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "helmet": "^7.0.0"
+  },
+  "license": "MIT"
+}
