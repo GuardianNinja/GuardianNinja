@@ -1,0 +1,151 @@
+# File: engine/succulent_engine.py
+# Space Leif Corp — nonprofit, lineage-safe prototype
+# Core idea: gentle sensors and regenerative loops as "succulent propulsion"
+# This module is intentionally simple, readable, and child-safe.
+
+from dataclasses import dataclass, field
+from typing import List, Optional
+import time
+import math
+from .organic_qr import RootSeal
+
+@dataclass
+class MoistureMemory:
+    """Stores gentle 'moisture' readings as a memory trail."""
+    window: int = 12
+    readings: List[float] = field(default_factory=list)
+
+    def add(self, value: float) -> None:
+        # Clamp to a safe human-friendly range [0.0, 1.0]
+        v = max(0.0, min(1.0, value))
+        self.readings.append(v)
+        if len(self.readings) > self.window:
+            self.readings.pop(0)
+
+    def level(self) -> float:
+        """Return average moisture as a calm signal."""
+        if not self.readings:
+            return 0.0
+        return sum(self.readings) / len(self.readings)
+
+@dataclass
+class LeafGyroscope:
+    """Tracks orientation and gentle rotation as 'leaf gyros'."""
+    yaw: float = 0.0     # degrees
+    pitch: float = 0.0   # degrees
+    roll: float = 0.0    # degrees
+
+    def nudge(self, dyaw: float = 0.0, dpitch: float = 0.0, droll: float = 0.0) -> None:
+        self.yaw = (self.yaw + dyaw) % 360.0
+        self.pitch = (self.pitch + dpitch) % 360.0
+        self.roll = (self.roll + droll) % 360.0
+
+    def stability(self) -> float:
+        """Return a gentle stability score [0..1]."""
+        # The closer to 0 orientation, the calmer the leaf.
+        deviation = abs(self.yaw) + abs(self.pitch) + abs(self.roll)
+        return max(0.0, 1.0 - min(1.0, deviation / 540.0))
+
+@dataclass
+class PetalPulse:
+    """Converts safe sensor states into a rhythmic 'pulse'."""
+    frequency_hz: float = 0.5
+    amplitude: float = 0.5
+    last_ts: Optional[float] = None
+
+    def tick(self) -> float:
+        now = time.time()
+        if self.last_ts is None:
+            self.last_ts = now
+        t = now - self.last_ts
+        # Smooth sine pulse
+        return self.amplitude * (0.5 + 0.5 * math.sin(2 * math.pi * self.frequency_hz * t))
+
+@dataclass
+class SucculentEngine:
+    """Lineage-safe engine that blends moisture, orientation, and a gentle pulse."""
+    memory: MoistureMemory = field(default_factory=MoistureMemory)
+    gyro: LeafGyroscope = field(default_factory=LeafGyroscope)
+    pulse: PetalPulse = field(default_factory=PetalPulse)
+    root_seal: RootSeal = field(default_factory=lambda: RootSeal(namespace="SpaceLeif.Succulent"))
+
+    def ingest(self, moisture: float, dyaw: float = 0.0, dpitch: float = 0.0, droll: float = 0.0) -> None:
+        """Update sensors with calm bounds."""
+        self.memory.add(moisture)
+        self.gyro.nudge(dyaw, dpitch, droll)
+
+    def propulsion(self) -> float:
+        """
+        Compute a gentle 'propulsion' signal:
+        - More moisture memory -> stronger baseline
+        - Greater stability -> cleaner transmission
+        - Petal pulse -> rhythmic modulation
+        """
+        baseline = 0.4 + 0.6 * self.memory.level()
+        clean = self.gyro.stability()
+        rhythm = self.pulse.tick()
+        return max(0.0, min(1.0, baseline * (0.6 + 0.4 * clean) * (0.7 + 0.3 * rhythm)))
+
+    def sign(self, message: str) -> str:
+        """Create an organic QR-style signature for continuity."""
+        return self.root_seal.stamp(message)
+
+
+# File: engine/organic_qr.py
+# Organic QR: simple, human-readable digest as a ceremonial 'root seal'
+
+import hashlib
+from dataclasses import dataclass
+
+@dataclass
+class RootSeal:
+    namespace: str
+
+    def stamp(self, text: str) -> str:
+        """
+        Produce a short signature that feels 'organic':
+        - Namespace + text -> digest
+        - Return a 12-char garden code with gentle separators
+        """
+        payload = f"{self.namespace}|{text}".encode("utf-8")
+        digest = hashlib.sha256(payload).hexdigest()[:12]
+        # Split into 'petals' for readability
+        return f"{digest[:4]}-{digest[4:8]}-{digest[8:12]}"
+
+
+# File: examples/demo_run.py
+# Minimal demonstration for posting a friendly GIF/clip or logline output
+
+from engine.succulent_engine import SucculentEngine
+
+def main():
+    engine = SucculentEngine()
+
+    # Simulate a calm morning with rising moisture and slight orientation nudges
+    inputs = [
+        (0.20,  2.0,  0.0,  1.0),
+        (0.35, -1.0,  1.5,  0.0),
+        (0.50,  0.5, -0.5,  0.5),
+        (0.65,  0.0,  0.5, -0.5),
+        (0.80, -0.5,  0.0,  0.0),
+    ]
+
+    for m, dy, dp, dr in inputs:
+        engine.ingest(m, dy, dp, dr)
+        thrust = engine.propulsion()
+        seal = engine.sign(f"Moisture={m:.2f}, dYaw={dy}, dPitch={dp}, dRoll={dr}")
+        print(f"Thrust:{thrust:.3f} | Seal:{seal}")
+
+if __name__ == "__main__":
+    main()
+
+
+# File: README.md
+# Succulent Engine — lineage-safe prototype (nonprofit)
+A gentle, kid-safe demonstration that turns everyday signals into a calm propulsion metaphor:
+- Moisture Memory: rolling average of input moisture
+- Leaf Gyroscope: orientation and stability signal
+- Petal Pulse: rhythmic modulation
+- Root Seal (Organic QR): short, human-readable signature
+
+Quick
