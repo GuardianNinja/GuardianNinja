@@ -1,0 +1,20 @@
+secure-message-scrubber/
+├─ package.json
+├─ README.md
+├─ src/
+│  ├─ server.js
+│  ├─ config.js
+│  ├─ pipeline/
+│  │  ├─ index.js
+│  │  ├─ validators.js
+│  │  ├─ scanners.js
+│  │  ├─ sanitizer.js
+│  │  └─ quarantine.js
+│  └─ utils/
+│     ├─ hash.js
+│     ├─ logger.js
+│     └─ signatures.js
+├─ test/
+│  ├─ pipeline.test.js
+│  └─ samples.json
+└─ .env.example
