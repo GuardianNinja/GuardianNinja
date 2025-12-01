@@ -55,13 +55,14 @@ class Jarvondis:
 
 # Run Jarvis in interactive mode
 if __name__ == "__main__":
-    jarvis = Jarvis()
-    jarvis.initialize()
+jarvondis = Jarvondis()
+jarvondis.initialize()
+
 
     while True:
         user_input = input("You: ")
         if user_input.lower() in ["exit", "quit"]:
-            print("Jarvis: Shutting down. 💤")
+            print("Jarvondis: Shutting down. 💤")
             jarvis.save_memory()
             break
         print("Jarvis:", jarvis.respond(user_input, user="Leif"))
