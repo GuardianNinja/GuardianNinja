@@ -1,0 +1,157 @@
+# file: jd_bio/pipeline.py
+
+from dataclasses import dataclass, field
+from typing import List, Dict, Tuple
+
+@dataclass
+class BiosecurityReport:
+    viral_score: float
+    pathogen_similarity: float
+    immune_trigger_score: float
+    flags: List[str] = field(default_factory=list)
+    recommendations: List[str] = field(default_factory=list)
+
+@dataclass
+class SequenceRecord:
+    id: str
+    raw_seq: str
+    cleaned_seq: str = ""
+    quality_stats: Dict[str, float] = field(default_factory=dict)
+    consensus_depth: int = 0
+    gc_windows: List[Tuple[int, int, float]] = field(default_factory=list)  # (start,end,gc)
+    mfe_windows: List[Tuple[int, int, float]] = field(default_factory=list)  # (start,end,mfe_score)
+    frame_valid: bool = False
+    motifs: Dict[str, bool] = field(default_factory=dict)
+    codon_score: float = 0.0
+    env_score: float = 0.0
+    biosecurity: BiosecurityReport = BiosecurityReport(0.0, 0.0, 0.0)
+    composite_score: float = 0.0
+
+# --- Core utilities (mock implementations; replace with real functions as needed) ---
+
+def sanitize(seq: str) -> str:
+    s = "".join(seq.upper().split())
+    if any(ch not in "AUCG" for ch in s):
+        raise ValueError("Invalid RNA bases; allowed A,U,C,G.")
+    return s
+
+def window_gc(seq: str, w: int = 60) -> List[Tuple[int,int,float]]:
+    out = []
+    for i in range(0, len(seq), w):
+        win = seq[i:i+w]
+        if not win: break
+        gc = sum(1 for ch in win if ch in "GC") / len(win)
+        out.append((i, i+len(win), gc))
+    return out
+
+def mock_mfe_score(seq: str, w: int = 60) -> List[Tuple[int,int,float]]:
+    # Lower is better; simple proxy using GC balance and homopolymer penalties
+    out = []
+    for i in range(0, len(seq), w):
+        win = seq[i:i+w]
+        if not win: break
+        gc = sum(1 for ch in win if ch in "GC") / len(win)
+        homopoly = max(len(max((list(g) for _, g in __import__("itertools").groupby(win)), key=len)))
+        score = abs(0.5 - gc) * 10 + homopoly  # proxy only
+        out.append((i, i+len(win), score))
+    return out
+
+def validate_motifs(seq: str) -> Dict[str,bool]:
+    # Simple checks: start AUG presence, proper stop at end, avoid long internal stops
+    start = "AUG" in seq[:30]
+    stop = seq[-3:] in {"UAA","UAG","UGA"}
+    internal_stops = any(seq[i:i+3] in {"UAA","UAG","UGA"} for i in range(0, len(seq)-3, 3))
+    return {"start_context": start, "terminal_stop": stop, "no_internal_stops": not internal_stops}
+
+def codon_bias_score(seq: str, host_table: Dict[str,float]) -> float:
+    # Average of host preference weights per codon; missing codons default to 0.5
+    score, n = 0.0, 0
+    for i in range(0, len(seq)-2, 3):
+        codon = seq[i:i+3]
+        score += host_table.get(codon, 0.5)
+        n += 1
+    return (score / n) if n else 0.0
+
+def environment_score(temp_c: float, mg_mM: float, gc_avg: float) -> float:
+    # Favor moderate temp and Mg2+, penalize extremes with GC imbalance
+    penalty = abs(0.5 - gc_avg) * 2 + max(0, (temp_c-37)/30)**2 + max(0, (mg_mM-2)/4)**2
+    return max(0.0, 1.0 - min(1.0, penalty))
+
+# --- Biosecurity layer ---
+
+VIRAL_MOTIFS = ["UUUUA", "UCUU", "CGCG", "AUAUAU"]  # placeholder patterns
+PATHOGEN_SIGNATURES = ["GGGAAACCC", "AUCGAUCGAU"]   # placeholder signatures
+
+def viral_signature_score(seq: str) -> Tuple[float,List[str]]:
+    hits = [m for m in VIRAL_MOTIFS if m in seq]
+    score = min(1.0, len(hits) / max(1, len(VIRAL_MOTIFS)))
+    return score, hits
+
+def pathogen_similarity_score(seq: str) -> Tuple[float,List[str]]:
+    hits = [p for p in PATHOGEN_SIGNATURES if p in seq]
+    score = min(1.0, len(hits) / max(1, len(PATHOGEN_SIGNATURES)))
+    return score, hits
+
+def immune_trigger_score(seq: str) -> float:
+    # Heuristics: dsRNA proxy via palindromes, CpG frequency, long homopolymers
+    cpg = sum(1 for i in range(len(seq)-1) if seq[i:i+2] == "CG") / max(1, len(seq))
+    homo = max(len(max((list(g) for _, g in __import__("itertools").groupby(seq)), key=len)))
+    palindrome = sum(1 for i in range(len(seq)//2) if seq[i] == seq[-1-i]) / max(1, len(seq))
+    score = min(1.0, 0.4*cpg + 0.3*(homo/20) + 0.3*palindrome)
+    return score
+
+def biosecurity_check(seq: str) -> BiosecurityReport:
+    vscore, vhits = viral_signature_score(seq)
+    pscore, phits = pathogen_similarity_score(seq)
+    iscore = immune_trigger_score(seq)
+    flags = []
+    if vscore > 0.5: flags.append("viral_motif_detected")
+    if pscore > 0.5: flags.append("pathogen_similarity_detected")
+    if iscore > 0.6: flags.append("immune_trigger_high")
+    recs = []
+    if "immune_trigger_high" in flags:
+        recs.append("reduce CpG content and break homopolymers via synonymous substitutions")
+    if "viral_motif_detected" in flags:
+        recs.append("remove or mutate repeated motif regions")
+    return BiosecurityReport(vscore, pscore, iscore, flags, recs)
+
+# --- Composite scoring ---
+
+def composite_score(structure: float, gcw: float, consensus: float, motifs_codons: float, env: float, biosafe: float) -> float:
+    return (0.40*structure + 0.15*gcw + 0.15*consensus + 0.15*motifs_codons + 0.10*env + 0.05*biosafe)
+
+# --- Pipeline run ---
+
+def evaluate_sequence(seq_id: str, raw_seq: str, host_table: Dict[str,float], temp_c: float = 25.0, mg_mM: float = 2.0) -> SequenceRecord:
+    rec = SequenceRecord(id=seq_id, raw_seq=raw_seq)
+    s = sanitize(raw_seq)
+    rec.cleaned_seq = s
+
+    gcw = window_gc(s)
+    rec.gc_windows = gcw
+    gc_avg = sum(v for _,_,v in gcw) / len(gcw)
+
+    mfe = mock_mfe_score(s)
+    rec.mfe_windows = mfe
+    # Convert window MFE proxy to structure score (lower is better)
+    struct_score = max(0.0, 1.0 - min(1.0, sum(v for _,_,v in mfe)/len(mfe)/10))
+
+    motifs = validate_motifs(s)
+    rec.motifs = motifs
+    motifs_score = sum(1.0 if v else 0.0 for v in motifs.values()) / len(motifs)
+
+    codons = codon_bias_score(s, host_table)
+    rec.codon_score = codons
+
+    env = environment_score(temp_c, mg_mM, gc_avg)
+    rec.env_score = env
+
+    bio = biosecurity_check(s)
+    rec.biosecurity = bio
+    biosafe = max(0.0, 1.0 - max(bio.viral_score, bio.pathogen_similarity, bio.immune_trigger_score))
+
+    gcw_score = sum(1.0 - abs(0.5 - v) * 2 for _,_,v in gcw) / len(gcw)  # 1.0 when near 0.5 GC
+    consensus_score = 0.9  # placeholder until you integrate real read-depth/quality
+
+    rec.composite_score = composite_score(struct_score, gcw_score, consensus_score, (motifs_score+codons)/2, env, biosafe)
+    return rec
