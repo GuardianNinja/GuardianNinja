@@ -1,0 +1,27 @@
+bug-busters-universal-pest-control/
+├─ README.md
+├─ LICENSE
+├─ CODE_OF_CONDUCT.md
+├─ CONTRIBUTING.md
+├─ .gitignore
+├─ pyproject.toml
+├─ bugbusters/
+│  ├─ __init__.py
+│  ├─ main.py
+│  ├─ game.py
+│  ├─ swarm.py
+│  ├─ sensors.py
+│  ├─ safety.py
+│  ├─ reporting.py
+│  ├─ config.py
+│  └─ assets/
+│     └─ stickers/
+│        ├─ guardian_captain.txt
+│        └─ bug_free_badge.txt
+├─ examples/
+│  ├─ demo_house_map.json
+│  └─ quick_run.sh
+└─ tests/
+   ├─ test_swarm.py
+   ├─ test_safety.py
+   └─ test_reporting.py
