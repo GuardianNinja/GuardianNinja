@@ -1,0 +1,1 @@
+python -m bugbusters.game --map examples/demo_house_map.json
