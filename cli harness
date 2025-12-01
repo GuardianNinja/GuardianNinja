@@ -1,0 +1,29 @@
+# file: rna_cli.py
+
+import argparse
+from rna_utils import reverse, complement, reverse_complement, translate, translate_rc, gc_content, chunk
+
+def main():
+    p = argparse.ArgumentParser(description="RNA reverse and reverse-complement tools")
+    p.add_argument("seq", help="RNA sequence (A,U,C,G)")
+    p.add_argument("--mode", choices=["reverse", "complement", "revcomp", "translate", "translate_rc"], default="revcomp")
+    p.add_argument("--frame", type=int, default=0, help="Reading frame for translation (0,1,2)")
+    args = p.parse_args()
+
+    if args.mode == "reverse":
+        out = reverse(args.seq)
+    elif args.mode == "complement":
+        out = complement(args.seq)
+    elif args.mode == "revcomp":
+        out = reverse_complement(args.seq)
+    elif args.mode == "translate":
+        out = translate(args.seq, frame=args.frame)
+    else:
+        out = translate_rc(args.seq, frame=args.frame)
+
+    print(out)
+    print(f"GC={gc_content(args.seq):.3f}")
+    print("codons:", " ".join(chunk(args.seq, 3)))
+
+if __name__ == "__main__":
+    main()
