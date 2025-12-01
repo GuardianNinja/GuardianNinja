@@ -1,0 +1,39 @@
+
+---
+
+### How to upload to GitHub
+
+1. **Create the repo:**
+   - **Action:** On GitHub, click “New repository”, name it `jarvis-x-scrubber`, choose Public or Private, and create.
+
+2. **Add files:**
+   - **Action:** Use “Add file” → “Create new file” to add `package.json`, `server.js`, and `README.md`. Paste the code above into each.
+
+3. **Commit:**
+   - **Action:** Click “Commit changes” after each file, or add all files and commit once.
+
+4. **Run locally (optional):**
+   - **Action:** On your computer:
+     - **Install Node.js 18+**
+     - **Download the repo** (Code → Download ZIP)
+     - **Open a terminal:**
+       ```bash
+       cd jarvis-x-scrubber
+       npm install
+       npm start
+       ```
+     - **Test:**
+       ```bash
+       curl -s http://localhost:8080/health
+       curl -s -X POST http://localhost:8080/scrub \
+         -H "Content-Type: application/json" \
+         --data '{"id":"1","from":"alice","to":"bob","timestamp":1733050000000,"body":"Hello <script>alert(1)</script>","urls":[]}'
+       ```
+
+---
+
+### If you want iPhone-only filtering later
+
+- **Goal:** Pre-filter text on-device in a private app before showing notifications.
+- **Path:** Build a small Swift app extension that posts incoming text to this service and only displays `status=clean`.
+- **Offer:** If you want that Swift snippet, say the word and I’ll add a simple on-device filter you can upload next.
