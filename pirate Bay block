@@ -1,0 +1,126 @@
+from dataclasses import dataclass, field
+from typing import List, Callable, Any, Dict, Optional
+import time
+import hashlib
+import json
+
+class SpongeDigest:
+    def __init__(self, algo: str = "sha256"):
+        self._algo = algo
+        self._h = hashlib.new(algo)
+        self.anomalies: List[Dict[str, Any]] = []
+
+    def absorb(self, item: Dict[str, Any]) -> None:
+        # Normalize then absorb
+        payload = json.dumps(item, sort_keys=True, separators=(",", ":")).encode("utf-8")
+        self._h.update(payload)
+        self.anomalies.append(item)
+
+    def squeeze(self) -> str:
+        return self._h.hexdigest()
+
+    def clear(self) -> None:
+        self._h = hashlib.new(self._algo)
+        self.anomalies.clear()
+
+@dataclass
+class State:
+    """A lineage-safe snapshot."""
+    ts: float
+    data: Dict[str, Any]
+    checksum: str
+
+def checksum(data: Dict[str, Any], algo: str = "sha256") -> str:
+    payload = json.dumps(data, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    return hashlib.new(algo, payload).hexdigest()
+
+@dataclass
+class InfinityLoopConfig:
+    max_states: int = 256
+    sponge_threshold: int = 0   # max allowed anomalies before quarantine
+    remediate: Optional[Callable[[Dict[str, Any]], Dict[str, Any]]] = None
+    verify: Optional[Callable[[Dict[str, Any]], bool]] = None
+    finalize: Optional[Callable[[List[State], Dict[str, Any]], None]] = None
+    quarantine: Optional[Callable[[List[Dict[str, Any]]], None]] = None
+
+@dataclass
+class BackwardsInfinityLoop:
+    cfg: InfinityLoopConfig
+    ring: List[State] = field(default_factory=list)
+    sponge: SpongeDigest = field(default_factory=SpongeDigest)
+    sealed_reports: List[Dict[str, Any]] = field(default_factory=list)
+
+    def push_state(self, data: Dict[str, Any]) -> None:
+        st = State(ts=time.time(), data=data, checksum=checksum(data))
+        self.ring.append(st)
+        if len(self.ring) > self.cfg.max_states:
+            self.ring.pop(0)  # bounded memory
+
+    def run_cycle(self) -> Dict[str, Any]:
+        # 1) Backwards pass: newest -> oldest
+        anomalies_found = 0
+        for st in reversed(self.ring):
+            # Verify checksum integrity
+            if st.checksum != checksum(st.data):
+                self.sponge.absorb({
+                    "type": "checksum_mismatch",
+                    "ts": st.ts,
+                    "expected": st.checksum,
+                    "actual": checksum(st.data),
+                    "data": st.data
+                })
+                anomalies_found += 1
+                continue
+            # Optional domain verification
+            if self.cfg.verify and not self.cfg.verify(st.data):
+                self.sponge.absorb({
+                    "type": "verification_fail",
+                    "ts": st.ts,
+                    "checksum": st.checksum,
+                    "data": st.data
+                })
+                anomalies_found += 1
+
+        digest = self.sponge.squeeze()
+
+        # 2) Remediation (sponge apply)
+        remediated: List[Dict[str, Any]] = []
+        if self.cfg.remediate:
+            for a in self.sponge.anomalies:
+                remediated.append(self.cfg.remediate(a))
+
+        # 3) Threshold gate
+        if anomalies_found > self.cfg.sponge_threshold:
+            if self.cfg.quarantine:
+                self.cfg.quarantine(self.sponge.anomalies)
+            report = {
+                "status": "quarantined",
+                "anomalies": anomalies_found,
+                "digest": digest,
+                "remediated": remediated,
+                "time": time.time()
+            }
+            self.sealed_reports.append(report)
+            self.sponge.clear()
+            return report
+
+        # 4) Finalize (commit clean state)
+        final_payload = {
+            "status": "finalized",
+            "anomalies": anomalies_found,
+            "digest": digest,
+            "ring_length": len(self.ring),
+            "time": time.time()
+        }
+        if self.cfg.finalize:
+            try:
+                self.cfg.finalize(self.ring, final_payload)
+            except Exception as e:
+                # Failsafe: quarantine on finalize error
+                if self.cfg.quarantine:
+                    self.cfg.quarantine([{"type": "finalize_error", "error": str(e)}])
+                final_payload["status"] = "finalize_error"
+
+        self.sealed_reports.append(final_payload)
+        self.sponge.clear()
+        return final_payload
