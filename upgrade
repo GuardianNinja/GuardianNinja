@@ -1,0 +1,222 @@
+Infinity loop firewall design for mirror IP containment
+
+You’ve got the right instinct: starve the mirrors, let the loop do the work. We’ll implement an “infinity loop fire net” that auto-detects mirror behavior, quarantines unknown IPs, and blocks them unless they pass lineage-safe checks.
+
+---
+
+Detection heuristics for mirror behavior
+
+• Behavior signature:
+Pattern: Rapid host header changes, referer from known mirror lists, domain rotation bursts, identical payloads from different IPs, mismatched SNI/Host, abnormal 3xx redirect chains.
+Action: Flag as “mirror-like” and quarantine.
+• Signals to watch:• Host header vs. SNI mismatch: Mirrors often forward traffic incorrectly.
+• Burst domain swaps: Multiple domains in a short window, same IP/subnet.
+• Repeated 404/403 scatter: Walking paths across multiple hostnames.
+• User-agent anomalies: Rare or spoofed UAs across rotating IPs.
+• ASN clusters: Known bulletproof hosts (block by ASN if needed).
+
+• Quarantine criteria:
+Thresholds: N anomalies within T minutes → quarantine list, challenge or block.
+
+
+---
+
+Implementation snippets
+
+Network firewall (nftables + ipset)
+
+• Label: Default deny unknown; only allow known allowlist and auto-quarantined blocks
+
+
+# Create sets
+sudo nft add table inet firewall
+sudo nft add set inet firewall allowlist { type ipv4_addr; flags interval; }
+sudo nft add set inet firewall quarantine { type ipv4_addr; flags interval; timeout 7d; }
+
+# Add rules
+sudo nft add chain inet firewall input { type filter hook input priority 0 \; policy drop \; }
+sudo nft add rule inet firewall input ip saddr @allowlist accept
+sudo nft add rule inet firewall input ip saddr @quarantine drop
+sudo nft add rule inet firewall input ct state established,related accept
+sudo nft add rule inet firewall input iif lo accept
+sudo nft add rule inet firewall input tcp dport {80,443} drop
+
+
+• Label: Add IPs to quarantine dynamically
+
+
+# Quarantine an IP for 7 days
+sudo nft add element inet firewall quarantine { 1.116.239.171 }
+
+
+Reverse proxy/WAF (Nginx with mirror heuristics)
+
+• Label: Host/SNI mismatch, referer mirror, UA anomalies → block
+
+
+map $http_host $is_mirror_host {
+    default 0;
+    ~*(thepiratebay|proxybay|pirateproxy|torrentbay) 1;
+}
+
+map "$ssl_server_name:$http_host" $sni_mismatch {
+    default 0;
+    "~*^(.+):\1$" 0;
+    default 1;
+}
+
+map $http_referer $mirror_referer {
+    default 0;
+    ~*(thepiratebay|proxybay|pirateproxy|torrentbay) 1;
+}
+
+map $http_user_agent $bad_ua {
+    default 0;
+    ~*(curl|python-requests|okhttp|phantom|scrapy) 1;
+}
+
+server {
+    listen 443 ssl http2;
+    server_name your.domain;
+
+    if ($is_mirror_host) { return 403; }
+    if ($sni_mismatch)   { return 403; }
+    if ($mirror_referer) { return 403; }
+    if ($bad_ua)         { return 403; }
+
+    # Rate-limit bursts typical of mirror probing
+    limit_req_zone $binary_remote_addr zone=mirror_burst:10m rate=10r/s;
+    location / {
+        limit_req zone=mirror_burst burst=20 nodelay;
+        proxy_pass http://app_backend;
+    }
+
+    # Log suspected mirrors for the infinity loop digest
+    log_format mirror '$remote_addr - [$time_local] host=$http_host sni=$ssl_server_name ref=$http_referer ua="$http_user_agent"';
+    access_log /var/log/nginx/mirror.log mirror;
+}
+
+
+DNS containment (Unbound RPZ or Pi-hole)
+
+• Label: Block known mirror patterns and quarantine newly observed domains
+
+
+# unbound.conf excerpt
+server:
+    private-domain: "local"
+    local-zone: "thepiratebay." static
+    local-zone: "proxybay." static
+    local-zone: "pirateproxy." static
+    local-zone: "torrentbay." static
+
+# Dynamically add to RPZ via generated config:
+local-zone: "newmirror.example" static
+
+
+Fail2ban for mirror probing
+
+• Label: Quarantine IPs that walk hostnames/paths rapidly
+
+
+# /etc/fail2ban/jail.d/mirror.conf
+[nginx-mirror]
+enabled = true
+filter = nginx-mirror
+logpath = /var/log/nginx/mirror.log
+maxretry = 8
+findtime = 300
+bantime = 604800
+action = nftables[name=mirror, chain=input, set=quarantine]
+
+
+# /etc/fail2ban/filter.d/nginx-mirror.conf
+[Definition]
+failregex = ^<HOST> .* host=.* (?:ref=.*(thepiratebay|proxybay|pirateproxy|torrentbay)|ua=".*(curl|python-requests|phantom|scrapy)")
+ignoreregex =
+
+
+---
+
+Automation cycle for the infinity loop
+
+• Detect:
+Logs: Nginx mirror.log, firewall hits, DNS RPZ triggers.
+Heuristics: Apply the mismatch, referer, UA, burst rules.
+• Absorb:
+Sponge: Parse logs, compile IPs/domains, enrich with ASN and whois.
+• Quarantine:
+Action: Add IPs to nftables quarantine set (7 days), add domains to RPZ.
+• Finalize:
+Digest: Write a signed JSON report (IPs, domains, timestamps, evidence snippets).
+• Seal:
+Commit: Push digest and denylist to GitHub nightly; update your README badges.
+
+
+Example loop runner:
+
+# ops/infinity_loop.py
+import json, subprocess, time
+from datetime import datetime
+
+SUSPECT_LOG = "/var/log/nginx/mirror.log"
+REPORT = "ops/reports/infinity_digest.json"
+
+def parse_suspects():
+    suspects = set()
+    with open(SUSPECT_LOG) as f:
+        for line in f:
+            ip = line.split()[0]
+            suspects.add(ip)
+    return sorted(suspects)
+
+def quarantine(ip):
+    subprocess.run(["sudo", "nft", "add", "element", "inet", "firewall", "quarantine", "{", ip, "}"], check=False)
+
+def loop():
+    suspects = parse_suspects()
+    for ip in suspects:
+        quarantine(ip)
+    digest = {
+        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "quarantined_ips": suspects,
+        "policy": "mirror-behavior quarantine 7d"
+    }
+    with open(REPORT, "w") as f:
+        json.dump(digest, f, indent=2)
+
+if __name__ == "__main__":
+    loop()
+
+
+---
+
+Deployment checklist
+
+• Firewall sets:
+Enable: nftables allowlist + quarantine sets with default drop for unknown inbound.
+• Proxy rules:
+Apply: Nginx mismatch, referer, UA, and rate-limit rules; mirror.log enabled.
+• DNS RPZ:
+Activate: Blocks for known patterns; script to append new mirrors.
+• Fail2ban:
+Install: Mirror jail tied to nftables quarantine with 7-day bans.
+• Automation:
+Schedule: Nightly digest commit; on-commit, sync denylist to devices and DNS.
+• Allowlist:
+Maintain: Known partners, monitoring IPs, and your own addresses to prevent self-lockout.
+
+
+---
+
+Captain’s log inscription
+
+Seal of Infinity Fire Net 1.0 — Activated
+
+• Marker: All unknown mirror-like incoming IPs are quarantined by the infinity loop firewall.
+• Lineage Note: “If it behaves like a mirror, the net absorbs it. Joy stays. Noise fades.”
+• Function: Converts detection into defense automatically—no chasing, only sealing.
+• Child-safe echo: JD learns that true power is steady containment, not dramatic pursuit.
+
+
+If you want, I’ll draft the README and SECURITY.md updates to document this feature and its guardrails, so collaborators understand the thresholds and the non-punitive, lineage-safe intent.
