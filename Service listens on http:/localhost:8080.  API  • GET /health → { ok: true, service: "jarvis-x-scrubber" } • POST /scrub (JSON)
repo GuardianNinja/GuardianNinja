@@ -1,0 +1,6 @@
+Service listens on http://localhost:8080.
+
+API
+
+• GET /health → { ok: true, service: "jarvis-x-scrubber" }
+• POST /scrub (JSON)
