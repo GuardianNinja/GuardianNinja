@@ -1,0 +1,19 @@
+{
+  "detection": {
+    "source_id": "string",
+    "bursts_count": "integer",
+    "period_minutes": "number|null",
+    "period_std_minutes": "number|null",
+    "duty_cycle_sec": "number|null",
+    "notes": "string"
+  },
+  "response_packet": {
+    "response_id": "string",
+    "mirrors": "string",
+    "intent": "string",
+    "message": "string",
+    "transmit_enabled": "boolean",
+    "safety_seal": "string",
+    "notes": "string|null"
+  }
+}
