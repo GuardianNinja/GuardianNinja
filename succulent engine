@@ -1,0 +1,9 @@
+succulent-engine/
+├─ README.md
+├─ LICENSE.txt
+├─ engine/
+│  ├─ __init__.py
+│  ├─ succulent_engine.py
+│  └─ organic_qr.py
+└─ examples/
+   └─ demo_run.py
