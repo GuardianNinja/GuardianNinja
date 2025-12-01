@@ -1,0 +1,89 @@
+import hashlib
+import hmac
+import time
+import os
+from dataclasses import dataclass
+
+# ---------- Utility primitives ----------
+
+def sha3_512(data: bytes) -> bytes:
+    return hashlib.sha3_512(data).digest()
+
+def blake2b(data: bytes, digest_size: int) -> bytes:
+    return hashlib.blake2b(data, digest_size=digest_size).digest()
+
+def hkdf(input_key_material: bytes, salt: bytes, info: bytes, length: int) -> bytes:
+    # HKDF using SHA3-512
+    prk = hmac.new(salt, input_key_material, hashlib.sha3_512).digest()
+    okm = b""
+    prev = b""
+    counter = 1
+    while len(okm) < length:
+        prev = hmac.new(prk, prev + info + bytes([counter]), hashlib.sha3_512).digest()
+        okm += prev
+        counter += 1
+    return okm[:length]
+
+# ---------- Captain's Log (append-only, MAC chained) ----------
+
+@dataclass
+class LogEntry:
+    ts: int
+    event: str
+    data_hash_hex: str
+    mac_hex: str
+
+class CaptainsLog:
+    def __init__(self, key: bytes):
+        self.key = key
+        self.entries = []
+        self._last_mac = b"\x00" * 64
+
+    def _entry_mac(self, ts: int, event: str, data_hash: bytes) -> bytes:
+        payload = (
+            ts.to_bytes(8, "big") +
+            event.encode("utf-8") +
+            data_hash +
+            self._last_mac
+        )
+        mac = hmac.new(self.key, payload, hashlib.sha3_512).digest()
+        self._last_mac = mac
+        return mac
+
+    def append(self, event: str, data: bytes):
+        ts = int(time.time())
+        data_hash = sha3_512(data)
+        mac = self._entry_mac(ts, event, data_hash)
+        entry = LogEntry(ts, event, data_hash.hex(), mac.hex())
+        self.entries.append(entry)
+
+    def verify_chain(self) -> bool:
+        last_mac = b"\x00" * 64
+        for e in self.entries:
+            ts = e.ts
+            event = e.event
+            data_hash = bytes.fromhex(e.data_hash_hex)
+            payload = ts.to_bytes(8, "big") + event.encode("utf-8") + data_hash + last_mac
+            mac = hmac.new(self.key, payload, hashlib.sha3_512).digest().hex()
+            if mac != e.mac_hex:
+                return False
+            last_mac = bytes.fromhex(e.mac_hex)
+        return True
+
+# ---------- Secure sponge protocol ----------
+
+class SecureSpongeProtocol:
+    MAX_INPUT = 10 * 1024 * 1024  # 10 MB guardrail for child-safe validation
+
+    def __init__(self, capacity_bits: int = 512, bitrate_bits: int = 256,
+                 dna_qr: str | None = None, key: bytes | None = None,
+                 context: bytes | None = None):
+        assert capacity_bits % 8 == 0 and bitrate_bits % 8 == 0, "Bit sizes must be byte-aligned"
+        self.capacity = capacity_bits // 8
+        self.bitrate = bitrate_bits // 8
+
+        self.state = bytearray(self.capacity + self.bitrate)
+        self._absorb_count = 0
+        self._squeeze_count = 0
+
+        # Session nonce binds all
