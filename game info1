@@ -1,0 +1,1 @@
+python -m bugbusters.main --map examples/demo_house_map.json --child-safe true
