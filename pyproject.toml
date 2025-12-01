@@ -1,0 +1,10 @@
+[project]
+name = "bugbusters"
+version = "0.1.0"
+description = "Child-safe, privacy-preserving pest control simulation with robotic swarms and a playful game."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "MIT"}
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
