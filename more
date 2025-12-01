@@ -1,0 +1,1 @@
+python -m bugbusters.main --report out/report.json
