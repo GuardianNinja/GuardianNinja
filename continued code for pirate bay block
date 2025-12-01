@@ -1,0 +1,38 @@
+def verify_rule(data):
+    # Must include 'id' and 'signature', and value within range
+    return all(k in data for k in ("id", "signature")) and (0 <= data.get("value", 0) <= 1000)
+
+def remediate_rule(anomaly):
+    # Example: redact oversized 'payload' and mark as remediated
+    d = dict(anomaly)
+    if "data" in d and isinstance(d["data"], dict):
+        payload = d["data"].get("payload", "")
+        if isinstance(payload, str) and len(payload) > 2048:
+            d["data"]["payload"] = payload[:2048] + "...[redacted]"
+    d["remediated"] = True
+    return d
+
+def finalize_commit(states, report):
+    # Example: print or persist; rotate token on success
+    print("FINALIZE:", report["status"], "digest:", report["digest"])
+
+def quarantine_store(anomalies):
+    # Example: log anomalies
+    print("QUARANTINE:", len(anomalies), "items")
+
+cfg = InfinityLoopConfig(
+    max_states=128,
+    sponge_threshold=0,  # zero tolerance: any anomaly triggers quarantine
+    verify=verify_rule,
+    remediate=remediate_rule,
+    finalize=finalize_commit,
+    quarantine=quarantine_store
+)
+
+loop = BackwardsInfinityLoop(cfg)
+
+# Usage
+loop.push_state({"id": "a1", "signature": "sig", "value": 5, "payload": "ok"})
+loop.push_state({"id": "b2", "value": 9999, "payload": "x" * 3000})  # missing signature, out of range
+result = loop.run_cycle()
+print("RESULT:", result)
