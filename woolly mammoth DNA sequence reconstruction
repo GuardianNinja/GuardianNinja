@@ -1,0 +1,78 @@
+# file: rna_utils.py
+
+from typing import Optional
+
+COMPLEMENT = {"A": "U", "U": "A", "C": "G", "G": "C"}
+
+CODON_TABLE = {
+    # Standard RNA codon table (U instead of T)
+    "AAA": "K", "AAG": "K", "AAU": "N", "AAC": "N",
+    "AGA": "R", "AGG": "R", "AGU": "S", "AGC": "S",
+    "AUA": "I", "AUG": "M", "AUU": "I", "AUC": "I",
+    "ACA": "T", "ACG": "T", "ACU": "T", "ACC": "T",
+
+    "GAA": "E", "GAG": "E", "GAU": "D", "GAC": "D",
+    "GGA": "G", "GGG": "G", "GGU": "G", "GGC": "G",
+    "GUA": "V", "GUG": "V", "GUU": "V", "GUC": "V",
+    "GCA": "A", "GCG": "A", "GCU": "A", "GCC": "A",
+
+    "UAA": "*", "UAG": "*", "UAU": "Y", "UAC": "Y",
+    "UGA": "*", "UGG": "W", "UGU": "C", "UGC": "C",
+    "UUA": "L", "UUG": "L", "UUU": "F", "UUC": "F",
+    "UCA": "S", "UCG": "S", "UCU": "S", "UCC": "S",
+
+    "CAA": "Q", "CAG": "Q", "CAU": "H", "CAC": "H",
+    "CGA": "R", "CGG": "R", "CGU": "R", "CGC": "R",
+    "CUA": "L", "CUG": "L", "CUU": "L", "CUC": "L",
+    "CCA": "P", "CCG": "P", "CCU": "P", "CCC": "P",
+}
+
+def sanitize_rna(seq: str) -> str:
+    """Uppercase and validate allowed bases (A,U,C,G). Remove whitespace."""
+    s = "".join(seq.upper().split())
+    if any(ch not in "AUCG" for ch in s):
+        raise ValueError("Invalid RNA sequence: allowed bases are A,U,C,G.")
+    return s
+
+def reverse(seq: str) -> str:
+    """Reverse the RNA sequence."""
+    s = sanitize_rna(seq)
+    return s[::-1]
+
+def complement(seq: str) -> str:
+    """Complement the RNA sequence (A<->U, C<->G)."""
+    s = sanitize_rna(seq)
+    return "".join(COMPLEMENT[ch] for ch in s)
+
+def reverse_complement(seq: str) -> str:
+    """Reverse complement of the RNA sequence."""
+    return complement(reverse(seq))
+
+def translate(seq: str, frame: int = 0, stop_symbol: str = "*") -> str:
+    """
+    Translate RNA to amino acids from a given reading frame (0,1,2).
+    Stops are marked by stop_symbol. Ignores trailing incomplete codon.
+    """
+    s = sanitize_rna(seq)
+    if frame not in (0, 1, 2):
+        raise ValueError("frame must be 0, 1, or 2")
+    aa = []
+    for i in range(frame, len(s) - 2, 3):
+        codon = s[i:i+3]
+        aa.append(CODON_TABLE.get(codon, "?"))
+    return "".join(aa)
+
+def translate_rc(seq: str, frame: int = 0, stop_symbol: str = "*") -> str:
+    """Translate the reverse complement in the given frame."""
+    return translate(reverse_complement(seq), frame=frame, stop_symbol=stop_symbol)
+
+def gc_content(seq: str) -> float:
+    """Return GC fraction (0..1)."""
+    s = sanitize_rna(seq)
+    gc = sum(1 for ch in s if ch in "GC")
+    return gc / len(s) if s else 0.0
+
+def chunk(seq: str, size: int) -> list[str]:
+    """Split into fixed-size chunks (e.g., codons)."""
+    s = sanitize_rna(seq)
+    return [s[i:i+size] for i in range(0, len(s), size)]
