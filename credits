@@ -1,0 +1,14 @@
+
+---
+
+### SECURITY.md
+
+```markdown
+# Security and safety
+
+- Harmful content is blocked by `qpai/filters/blocklist.txt`.
+- Only general, non‑personal guidance is offered.
+- No medical, legal, or financial advice. No instructions for harm or evasion.
+- No data storage or logging of prompts.
+
+If you find a risky edge case, open an issue titled “Safety: <short description>” and propose a clear, child‑safe fix.
