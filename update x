@@ -1,0 +1,95 @@
+Cross‑verification plan with middle‑split and backward analysis
+
+We’ll add bidirectional checks so every safety gate passes forward and backward, with results split at the midpoint to reveal hidden errors.
+
+---
+
+Bidirectional verification
+
+• Forward–backward runs:
+Execute each test scenario from start to finish, then replay in reverse (revoke → confirm → enroll) to ensure identical outcomes and unbroken audit chains.
+• Time‑reversal consistency:
+Confirm state transitions are reversible where intended (e.g., consent revoke → immediate hide; re‑grant → visible) and never lose integrity.
+
+
+---
+
+Middle‑split analysis
+
+• Halving checkpoints:
+Split each test timeline at the midpoint; assert invariants before and after the split (identity, consent, audit hash, environment flags).
+• Delta parity checks:
+Compare pre‑split and post‑split event counts, states, and hashes; any mismatch triggers failure and root‑cause analysis.
+
+
+---
+
+Hash‑chain and tamper proofs
+
+• Prior–posterior hashing:
+Validate each event’s hash and prior_hash forward; recompute the entire chain backward to confirm no divergence.
+• Merkle root anchors:
+Generate and compare Merkle roots for halves; roots must match recomposed full chain.
+
+
+---
+
+Invariant and redundancy checks
+
+• Core invariants:• Consent: Hide‑on‑revoke is immediate and persists across the split and reverse replay.
+• Identity: Passkeys/QR must succeed under environmental constraints in both directions.
+• Audit: No orphan events; environment tags consistent.
+
+• Dual‑write parity:
+Compare device log vs secure ledger entries; require 100% parity of event IDs and hashes.
+
+
+---
+
+Error discovery by backward replay
+
+• Reverse RBAC tests:
+Attempt to undo privileged actions without dual‑control; must fail with logged denial in both halves.
+• Reverse recovery drills:
+Start from “recovered” state and walk backward through backup codes/OTP; ensure no path bypasses consent gates.
+
+
+---
+
+Extreme condition cross‑checks
+
+• Underwater:
+Mid‑split at communication loss; confirm offline consent revocation persists and merges cleanly on reconnect.
+• Space (simulated):
+Mid‑split at DTN delay; verify delayed receipts merge without reordering errors in backward recompute.
+• Darkness:
+Mid‑split at blackout; confirm haptic/IR prompts produce identical audit outcomes forward and backward.
+
+
+---
+
+Metrics and thresholds (require 100%)
+
+• Parity rate:
+100% match of forward vs backward outcomes (states, hashes, receipts) across all scenarios.
+• Invariant adherence:
+100% pass on consent, identity, and audit invariants at pre‑split and post‑split checkpoints.
+• Chain integrity:
+100% success on forward and backward recomputation of hash chains and Merkle roots.
+
+
+---
+
+Reporting and gates
+
+• Split reports:
+Produce A/B (pre/post) summaries with parity tables and discrepancies; include reverse‑run diffs.
+• No‑go triggers:
+Any parity failure, invariant break, or chain divergence halts launch until the defect is fixed and retested.
+• Sign‑off:
+Independent auditors validate forward/backward parity and midpoint integrity before greenlighting.
+
+
+---
+
+If you want, I can turn this into an engineer‑ready checklist with pass/fail fields and a small script spec for forward/backward hash‑chain recompute and midpoint parity tables.
