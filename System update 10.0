@@ -1,0 +1,500 @@
+Mind mapping defense — stress test ready build
+
+You asked to integrate the backwards–reverse infinite loop check, plus a 10‑year full spectrum sandbox stress test. This build adds:
+
+• Always‑on firewall reminders and auto‑reactivation
+• Consent‑based parental monitoring
+• Gentle child signals (sound, vibration, temperature)
+• Ten‑year progressive diagnostics with controlled “error injection”
+• Backwards/forward consistency checks every cycle
+• Safe “radiation” simulation as metadata only (no real exposure or control)
+
+
+Note: “Radiation testing” here is purely symbolic/simulated: we tag risk nodes and verify the system’s containment logic. No instructions or interfaces for real‑world radiation are included.
+
+---
+
+Revised program (ready to run)
+
+#!/usr/bin/env python3
+"""
+Mind Mapping Defense — lineage-safe guardianship program (Stress-Test Build)
+
+- Child privacy first
+- Consent-based, non-intrusive parental check-ins
+- Gentle signals (sound/vibration/temperature) for messages
+- Always-on firewall reminder and protective checks
+- Ten-year sandbox stress test with progressive diagnostics
+- Backwards–forward infinite loop consistency check with safe auto-stop
+- Symbolic 'radiation' simulation via risk tags (no real-world controls)
+"""
+
+from dataclasses import dataclass, field, asdict
+from typing import List, Dict, Tuple, Set, Optional
+from datetime import datetime
+import argparse
+import json
+import sys
+import time
+import random
+import os
+
+# -----------------------------
+# Core data structures
+# -----------------------------
+
+@dataclass
+class Node:
+    id: str
+    label: str
+    type: str  # "idea" | "goal" | "step" | "risk"
+    priority: int = 3
+    tags: List[str] = field(default_factory=list)
+
+@dataclass
+class Edge:
+    source: str
+    target: str
+    relation: str  # "supports" | "contradicts" | "requires"
+
+@dataclass
+class MindMap:
+    name: str
+    direction: str  # "forward" or "backward"
+    nodes: Dict[str, Node]
+    edges: List[Edge]
+
+@dataclass
+class DefenseFlag:
+    kind: str
+    nodes: List[str]
+    details: str
+    prompt: str
+
+@dataclass
+class DefenseReport:
+    name: str
+    calm_queue: List[DefenseFlag]
+    stats: Dict[str, int]
+    recommendations: List[str]
+
+# -----------------------------
+# Privacy, consent, signaling, firewall
+# -----------------------------
+
+class PrivacySettings:
+    """
+    Child privacy is sacred. Parent access only with explicit, revocable consent.
+    """
+    def __init__(self, child_id: str):
+        self.child_id = child_id
+        self.parent_access = False
+        self.firewall_active = True
+        self.consent_log: List[Dict[str, str]] = []  # [{"event": "grant"/"revoke", "time": iso}]
+
+    def grant_parent_access(self) -> str:
+        self.parent_access = True
+        self.consent_log.append({"event": "grant", "time": datetime.utcnow().isoformat()})
+        return "Parent access granted with child consent."
+
+    def revoke_parent_access(self) -> str:
+        self.parent_access = False
+        self.consent_log.append({"event": "revoke", "time": datetime.utcnow().isoformat()})
+        return "Parent access revoked."
+
+    def toggle_firewall(self, state: bool) -> str:
+        self.firewall_active = state
+        return f"Firewall {'active' if state else 'inactive'}."
+
+class SignalSystem:
+    """
+    Gentle cues to notify the child of a parent check-in request.
+    (Abstract — no hardware; logs signals for transparency.)
+    """
+    def __init__(self):
+        self.signals = {"sound": False, "vibration": False, "temperature": False}
+        self.log: List[Dict[str, str]] = []
+
+    def send_signal(self, kind: str) -> str:
+        if kind not in self.signals:
+            return "Invalid signal type."
+        self.signals[kind] = True
+        self.log.append({"signal": kind, "time": datetime.utcnow().isoformat()})
+        return f"Sent {kind} signal to child."
+
+class Firewall:
+    """
+    Always-on protective layer. Reminds the user and enforces checks.
+    """
+    def __init__(self, active: bool = True):
+        self.active = active
+        self.reminder_log: List[str] = []
+
+    def remind(self) -> str:
+        msg = f"[{datetime.utcnow().isoformat()}] Firewall active — protection engaged."
+        self.reminder_log.append(msg)
+        return msg
+
+    def ensure_active(self):
+        # Enforce always-on philosophy: never silently off.
+        if not self.active:
+            self.active = True
+            return "Firewall was off; reactivated for protection."
+        return "Firewall is active."
+
+# -----------------------------
+# Analysis logic
+# -----------------------------
+
+def analyze_map(m: MindMap, load_threshold: int = 8) -> DefenseReport:
+    degree: Dict[str, int] = {nid: 0 for nid in m.nodes}
+    inbound: Dict[str, int] = {nid: 0 for nid in m.nodes}
+    outbound: Dict[str, int] = {nid: 0 for nid in m.nodes}
+    contradict_pairs: Set[Tuple[str, str]] = set()
+
+    for e in m.edges:
+        if e.source in degree: degree[e.source] += 1
+        if e.target in degree: degree[e.target] += 1
+        if e.source in outbound: outbound[e.source] += 1
+        if e.target in inbound: inbound[e.target] += 1
+        if e.relation == "contradicts":
+            contradict_pairs.add(tuple(sorted((e.source, e.target))))
+
+    calm_queue: List[DefenseFlag] = []
+
+    # Contradictions
+    if contradict_pairs:
+        nodes = list({n for pair in contradict_pairs for n in pair})
+        calm_queue.append(DefenseFlag(
+            kind="contradictions",
+            nodes=nodes,
+            details=f"Found {len(contradict_pairs)} contradiction link(s).",
+            prompt="Review contradictions calmly: can any be reframed, sequenced, or separated by context?"
+        ))
+
+    # Orphans
+    orphan_in = [n for n, c in inbound.items() if c == 0]
+    orphan_out = [n for n, c in outbound.items() if c == 0]
+    if orphan_in:
+        calm_queue.append(DefenseFlag(
+            kind="orphan_inbound",
+            nodes=orphan_in,
+            details=f"{len(orphan_in)} nodes have no prerequisites.",
+            prompt="Do these nodes need a clear prerequisite or can they stand alone as a starting point?"
+        ))
+    if orphan_out:
+        calm_queue.append(DefenseFlag(
+            kind="orphan_outbound",
+            nodes=orphan_out,
+            details=f"{len(orphan_out)} nodes lead nowhere.",
+            prompt="Do these nodes require a next step, or are they intentionally terminal (done/parked)?"
+        ))
+
+    # Load meter
+    overloaded = [n for n, d in degree.items() if d > load_threshold]
+    if overloaded:
+        calm_queue.append(DefenseFlag(
+            kind="overload",
+            nodes=overloaded,
+            details=f"{len(overloaded)} nodes exceed connection threshold {load_threshold}.",
+            prompt="Reduce cognitive load: split, tag, or create submaps for overloaded nodes."
+        ))
+
+    stats = {
+        "nodes": len(m.nodes),
+        "edges": len(m.edges),
+        "contradictions": len(contradict_pairs),
+        "orphan_inbound": len(orphan_in),
+        "orphan_outbound": len(orphan_out),
+        "overloaded": len(overloaded)
+    }
+
+    recommendations = []
+    if contradict_pairs:
+        recommendations.append("Create ‘context gates’ to separate contradictory intentions by time/place.")
+    if orphan_out:
+        recommendations.append("Add explicit next steps for terminal nodes or mark them as complete.")
+    if overloaded:
+        recommendations.append("Refactor overloaded hubs into modular submaps with clear tags.")
+    if not recommendations:
+        recommendations.append("Map is stable. Proceed with gentle sequencing and review weekly.")
+
+    return DefenseReport(name=m.name, calm_queue=calm_queue, stats=stats, recommendations=recommendations)
+
+def compare_forward_backward(forward: MindMap, backward: MindMap) -> DefenseFlag:
+    # Ensure backward prerequisites exist in forward steps/goals
+    forward_labels = {n.label.lower() for n in forward.nodes.values()}
+    missing = []
+    for e in backward.edges:
+        if e.relation == "requires":
+            tgt_id = e.target
+            if tgt_id in backward.nodes:
+                tgt_label = backward.nodes[tgt_id].label.lower()
+                if tgt_label not in forward_labels:
+                    missing.append(tgt_id)
+            else:
+                missing.append(tgt_id)
+    return DefenseFlag(
+        kind="goal_consistency",
+        nodes=missing,
+        details=f"{len(missing)} backward prerequisites missing in forward plan.",
+        prompt="Add or link these prerequisites into the forward map for consistency."
+    )
+
+# -----------------------------
+# Parental monitoring (consent-based, summaries only)
+# -----------------------------
+
+class ParentMonitor:
+    """
+    Consent-based summaries: parents see high-level status only,
+    not raw thoughts or private nodes.
+    """
+    @staticmethod
+    def summarize(forward: MindMap, privacy: PrivacySettings) -> Dict[str, object]:
+        if not privacy.parent_access:
+            return {"status": "no_access", "message": "Parent access not granted by child."}
+        goals = [n.label for n in forward.nodes.values() if n.type == "goal"]
+        steps = [n.label for n in forward.nodes.values() if n.type == "step"]
+        risks = [n.label for n in forward.nodes.values() if n.type == "risk"]
+        return {
+            "status": "summary",
+            "firewall_active": privacy.firewall_active,
+            "goals_preview": goals[:3],
+            "steps_preview": steps[:5],
+            "risks_count": len(risks),
+            "note": "This is a consent-based, non-intrusive preview."
+        }
+
+# -----------------------------
+# Default maps
+# -----------------------------
+
+def default_forward_map() -> MindMap:
+    nodes_f = {
+        "A": Node(id="A", label="Protect Cadets", type="goal", priority=5),
+        "B": Node(id="B", label="Joy Protocol", type="step", priority=4),
+        "C": Node(id="C", label="Firewall Resonance", type="step", priority=4),
+    }
+    edges_f = [
+        Edge(source="B", target="A", relation="supports"),
+        Edge(source="C", target="A", relation="supports"),
+        Edge(source="B", target="C", relation="contradicts"),  # intentional test for defense
+    ]
+    return MindMap(name="Forward Guardianship", direction="forward", nodes=nodes_f, edges=edges_f)
+
+def default_backward_map() -> MindMap:
+    nodes_b = {
+        "X": Node(id="X", label="Protect Cadets", type="goal", priority=5),
+        "Y": Node(id="Y", label="Training Rhythm", type="step", priority=3),
+    }
+    edges_b = [
+        Edge(source="Y", target="X", relation="requires"),
+        Edge(source="Z", target="X", relation="requires"),  # missing node on purpose
+    ]
+    # Note: "Z" will be missing initially; consistency check should flag it.
+    return MindMap(name="Backward Outcomes", direction="backward", nodes=nodes_b, edges=edges_b)
+
+# -----------------------------
+# Simulation helpers
+# -----------------------------
+
+def add_growth(map_obj: MindMap, year: int) -> None:
+    """
+    Progressive growth: add nodes/edges annually.
+    Some years inject contradictions or orphan nodes to test containment.
+    """
+    # Add a new step node
+    nid = f"N{year}"
+    map_obj.nodes[nid] = Node(id=nid, label=f"Year {year} Step", type="step", priority=random.randint(2,4))
+    # Link to a goal if exists
+    goals = [n for n in map_obj.nodes if map_obj.nodes[n].type == "goal"]
+    if goals:
+        map_obj.edges.append(Edge(source=nid, target=random.choice(goals), relation="supports"))
+    # Occasionally add a risk node tagged 'radiation_sim' (symbolic only)
+    if year % 3 == 0:
+        rid = f"R{year}"
+        map_obj.nodes[rid] = Node(id=rid, label=f"Year {year} Risk Check", type="risk", priority=2, tags=["radiation_sim", "containment_test"])
+        # Risk edges may be orphan intentionally to see orphan detection
+    # Occasionally inject a contradiction
+    if year % 4 == 0 and goals:
+        other_steps = [n for n in map_obj.nodes if map_obj.nodes[n].type == "step" and n != nid]
+        if other_steps:
+            map_obj.edges.append(Edge(source=nid, target=random.choice(other_steps), relation="contradicts"))
+
+def random_signal(signal: SignalSystem) -> None:
+    kind = random.choice(["sound", "vibration", "temperature"])
+    signal.send_signal(kind)
+
+def flip_consent(privacy: PrivacySettings, cycle: int) -> None:
+    if cycle % 2 == 0:
+        privacy.grant_parent_access()
+    else:
+        privacy.revoke_parent_access()
+
+def export_year_reports(base_dir: str, year: int, forward_report: DefenseReport, backward_report: DefenseReport, consistency: DefenseFlag, privacy: PrivacySettings, firewall: Firewall, signal: SignalSystem):
+    os.makedirs(base_dir, exist_ok=True)
+    export_report(forward_report, os.path.join(base_dir, f"forward_year_{year}.json"))
+    export_report(backward_report, os.path.join(base_dir, f"backward_year_{year}.json"))
+    save_json({"kind": consistency.kind, "nodes": consistency.nodes, "details": consistency.details, "prompt": consistency.prompt}, os.path.join(base_dir, f"consistency_year_{year}.json"))
+    save_json({"firewall_log": firewall.reminder_log[-5:]}, os.path.join(base_dir, f"firewall_year_{year}.json"))
+    save_json({"parent_access": privacy.parent_access, "consent_log_tail": privacy.consent_log[-5:]}, os.path.join(base_dir, f"privacy_year_{year}.json"))
+    save_json({"signals_tail": signal.log[-5:]}, os.path.join(base_dir, f"signals_year_{year}.json"))
+
+# -----------------------------
+# Infinite reverse check
+# -----------------------------
+
+def infinite_reverse_check(forward: MindMap, backward: MindMap, privacy: PrivacySettings, firewall: Firewall, signal: SignalSystem, auto_stop_cycles: Optional[int] = None, delay_sec: float = 0.5):
+    cycle = 0
+    while True:
+        cycle += 1
+
+        # Firewalled cadence
+        firewall.ensure_active()
+        firewall.remind()
+
+        # Toggle consent and send a gentle signal
+        flip_consent(privacy, cycle)
+        random_signal(signal)
+
+        # Analyze both directions
+        forward_report = analyze_map(forward)
+        backward_report = analyze_map(backward)
+        consistency_flag = compare_forward_backward(forward, backward)
+
+        # Progressively grow forward map to simulate real life
+        add_growth(forward, cycle)
+
+        # Optional auto-stop for safety
+        if auto_stop_cycles and cycle >= auto_stop_cycles:
+            return forward_report, backward_report, consistency_flag
+
+        time.sleep(delay_sec)
+
+# -----------------------------
+# Ten-year sandbox test
+# -----------------------------
+
+def run_ten_year_test(base_dir: str = "sandbox_reports", years: int = 10, delay_sec: float = 0.2):
+    forward = default_forward_map()
+    backward = default_backward_map()
+    privacy = PrivacySettings(child_id="cadet-001")
+    firewall = Firewall(active=True)
+    signal = SignalSystem()
+
+    for year in range(1, years + 1):
+        # Annual growth and checks
+        firewall.ensure_active()
+        firewall.remind()
+        flip_consent(privacy, year)
+        random_signal(signal)
+
+        # Add growth to both maps to simulate evolving goals and outcomes
+        add_growth(forward, year)
+        add_growth(backward, year)
+
+        # Run diagnostics
+        forward_report = analyze_map(forward)
+        backward_report = analyze_map(backward)
+        consistency_flag = compare_forward_backward(forward, backward)
+
+        # Export year artifacts
+        export_year_reports(base_dir, year, forward_report, backward_report, consistency_flag, privacy, firewall, signal)
+
+        # Gentle pacing
+        time.sleep(delay_sec)
+
+    return forward, backward, privacy, firewall, signal
+
+# -----------------------------
+# I/O helpers
+# -----------------------------
+
+def export_report(report: DefenseReport, path: str):
+    payload = {
+        "name": report.name,
+        "stats": report.stats,
+        "calm_queue": [asdict(flag) for flag in report.calm_queue],
+        "recommendations": report.recommendations
+    }
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(payload, f, indent=2, ensure_ascii=False)
+
+def save_json(obj, path: str):
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(obj, f, indent=2, ensure_ascii=False)
+
+# -----------------------------
+# CLI
+# -----------------------------
+
+def main():
+    parser = argparse.ArgumentParser(description="Mind Mapping Defense — Stress-Test Build")
+    parser.add_argument("--mode", choices=["ten_year", "infinite"], default="ten_year", help="Run 10-year sandbox or infinite reverse check.")
+    parser.add_argument("--years", type=int, default=10, help="Years for sandbox test.")
+    parser.add_argument("--cycles", type=int, default=100, help="Auto-stop cycles for infinite mode.")
+    parser.add_argument("--delay", type=float, default=0.2, help="Delay seconds between cycles/years.")
+    parser.add_argument("--out", type=str, default="sandbox_reports", help="Output directory for reports.")
+    args = parser.parse_args()
+
+    if args.mode == "ten_year":
+        forward, backward, privacy, firewall, signal = run_ten_year_test(base_dir=args.out, years=args.years, delay_sec=args.delay)
+        print(json.dumps({
+            "final": {
+                "forward_nodes": len(forward.nodes),
+                "backward_nodes": len(backward.nodes),
+                "consent_active": privacy.parent_access,
+                "firewall_reminders": len(firewall.reminder_log),
+                "signals_sent": len(signal.log),
+            },
+            "note": "Ten-year sandbox completed. Reports saved to output directory."
+        }, indent=2))
+    else:
+        forward = default_forward_map()
+        backward = default_backward_map()
+        privacy = PrivacySettings(child_id="cadet-001")
+        firewall = Firewall(active=True)
+        signal = SignalSystem()
+        fr, br, cf = infinite_reverse_check(forward, backward, privacy, firewall, signal, auto_stop_cycles=args.cycles, delay_sec=args.delay)
+        print(json.dumps({
+            "final_cycle": {
+                "forward_stats": fr.stats,
+                "backward_stats": br.stats,
+                "consistency_details": cf.details,
+                "last_consent_event": privacy.consent_log[-1] if privacy.consent_log else None,
+                "firewall_reminders": len(firewall.reminder_log),
+                "signals_sent": len(signal.log),
+            },
+            "note": f"Infinite reverse check completed after {args.cycles} cycles (auto-stop)."
+        }, indent=2))
+
+if __name__ == "__main__":
+    main()
+
+
+---
+
+How to run
+
+• Ten‑year sandbox test:• python3 mind_mapping_defense.py –mode ten_year –years 10 –out sandbox_reports
+
+• Infinite reverse check (auto‑stops at 100 cycles by default):• python3 mind_mapping_defense.py –mode infinite –cycles 100
+
+
+
+This will generate year‑by‑year JSON reports in the chosen output directory, including firewall reminders, consent logs, signal tails, and consistency checks. The “radiation” simulation appears only as tags on risk nodes (e.g., “radiation_sim”) to validate containment logic without any real‑world interaction.
+
+---
+
+Upload tip
+
+Add a short README that states:
+
+• Child privacy and consent are foundational.
+• Parents see summaries only with consent.
+• Firewall is always on, with reminders and auto‑reactivation.
+• Stress tests are symbolic and safe; no interfaces to physical systems.
+
+
+If you want, I can draft that README next so your GitHub upload carries the right intent, clearly and calmly.
