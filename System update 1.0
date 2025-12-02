@@ -1,0 +1,117 @@
+Merge confirmation
+
+Your “lockdown update protocol” is merged into main (+122 lines, commit 1052e17). The repository now reflects the lockdown intent with a dedicated “lockdown” directory and the new policy file. Nice, decisive move to capture it as a first-class artifact.
+
+---
+
+Critical next steps (24-hour window)
+
+• Branch hygiene:
+Action: Delete the merged feature branch to reduce drift and accidental reopens.
+Outcome: One clear source of truth on main.
+• Deny-by-default live:
+Action: Wire the lockdown policy into the request pipeline so it actively blocks non-approved origins/routes.
+Outcome: Immediate closure of “open” paths.
+• HTTPS-only enforcement:
+Action: Remove any “Service listens on http” surface; force TLS, set HSTS, and use mTLS internally.
+Outcome: Transport security hardened end-to-end.
+• Dual consent gate:
+Action: Require Owner + Microsoft delegation + signed approval for any privileged action.
+Outcome: No silent admin updates, ever.
+• Config immutability:
+Action: Lock production configs; allow updates only via signed migrations.
+Outcome: No runtime flips or hidden toggles.
+• Audit ledger:
+Action: Append-only logs for every privileged attempt; alerts on anomalies.
+Outcome: Traceability and deterrence.
+
+
+---
+
+Enforcement snippets to wire in now
+
+// middleware/denyByDefault.ts
+export function denyByDefault(req, res, next) {
+  const allowedOrigins = new Set(['https://portal.guardian.ninja', 'https://login.microsoftonline.com']);
+  const allowedPaths = new Set(['/health', '/public/info']);
+  if (!allowedOrigins.has(req.headers.origin) || !allowedPaths.has(req.path)) {
+    return res.status(403).json({ ok: false, reason: 'Access denied: lockdown policy' });
+  }
+  next();
+}
+
+
+// middleware/dualConsent.ts
+export function dualConsent(actionId: string) {
+  return (req, res, next) => {
+    const jwt = req.user?.token;
+    const roles = req.user?.roles ?? [];
+    const signed = verifyRequestSignature(req); // nonce + timestamp + rotating key
+    const hasRole = roles.includes('Owner') || roles.includes('MicrosoftDelegate');
+    const msDelegation = jwt?.claims?.ms_delegation === true;
+    const approved = approvalsLedger.isApproved(req.user.id, actionId, req.headers['x-request-id']);
+    if (!(hasRole && msDelegation && approved && signed)) {
+      return res.status(403).json({ ok: false, reason: 'Dual consent required' });
+    }
+    next();
+  };
+}
+
+
+# nginx: HTTPS-only + HSTS
+server { listen 80; return 301 https://$host$request_uri; }
+server {
+  listen 443 ssl http2;
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+  ssl_protocols TLSv1.3;
+  # ssl_certificate /path; ssl_certificate_key /path;
+}
+
+
+---
+
+Verification tests before midnight
+
+• Open route scans:
+Test: Hit non-allowlisted paths and origins; expect 403 with denial reason.
+Pass criteria: 100% blocked.
+• Privileged action simulation:
+Test: Attempt admin.update with and without dual consent (role, ms_delegation, signed approval).
+Pass criteria: Only the fully consented request succeeds.
+• HTTP rejection:
+Test: Send plain http traffic; verify auto-redirect and refusal of internal services.
+Pass criteria: No cleartext accepted inside the boundary.
+• Config tamper check:
+Test: Modify a prod config hash; ensure startup fails fast.
+Pass criteria: Tamper refusal logged and alert fired.
+• Audit immutability:
+Test: Append privileged attempts; confirm log cannot be altered and includes origin, path, decision.
+Pass criteria: Ledger integrity maintained.
+
+
+---
+
+Ongoing oversight and audit
+
+• Silent Witness embed:
+Action: Register read-only telemetry stream (commit metadata, firewall events, privileged attempts) with dual-consent access.
+Outcome: Passive integrity checks without write capability.
+• Policy signaling:
+Action: Add structured headers to denials.
+Outcome: Clear, lineage-safe notice on every blocked attempt.X-Policy: Lockdown active; privileged actions require Owner + Microsoft Delegate approval.
+X-Audit-Id: ${uuid}
+X-Denial-Reason: Unauthorized privileged request.
+
+
+
+---
+
+Quick asks to tailor the next PR
+
+• Stack details: Language, framework, runtime, and reverse proxy (if any).
+• Current entry points: Endpoints, webhooks, CLI, and any admin/update routes.
+• Auth provider: Tenant and claims you want for delegation.
+• Namespace: Your preferred lineage-safe names for lockdown modules and seals.
+
+
+Share those, and I’ll craft a focused PR: wire the middleware, lock transport, protect configs, and add the Silent Witness ledger with tests.
