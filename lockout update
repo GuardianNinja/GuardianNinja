@@ -1,0 +1,11 @@
+// server/middleware/denyByDefault.ts
+export function denyByDefault(req, res, next) {
+  // Only allow approved origins and paths
+  const allowedOrigins = new Set(['https://portal.guardian.ninja', 'https://login.microsoftonline.com']);
+  const allowedPaths = new Set(['/health', '/public/info']);
+
+  if (!allowedOrigins.has(req.headers.origin) || !allowedPaths.has(req.path)) {
+    return res.status(403).json({ ok: false, reason: 'Access denied: closed by default' });
+  }
+  next();
+}
