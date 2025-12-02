@@ -1,0 +1,122 @@
+Update status and quick validation
+
+Looks like you merged “Create security update” into main (1 file, +113 lines), and started a new file “update to stop opening,” committing that intent to stop unwanted opening/access paths. The checklist section you edited (“What I need to proceed”) is visible in your commit dialog, so the hardening plan is now part of the repo history. Good move capturing it as a living artifact.
+
+---
+
+Immediate lock‑down actions
+
+• Entry points:
+Action: Enumerate and disable any “open” routes, webhooks, or generic chatbot adapters.
+Proof: Add a deny‑by‑default middleware and a single allowlist for approved origins.
+• HTTP to HTTPS:
+Action: The folder “Service listens on http:” suggests cleartext.
+Proof: Enforce HTTPS-only with HSTS, redirect all http to https, require mTLS internally.
+• Auth gate:
+Action: Require Microsoft Entra ID tokens for any privileged action and your explicit approval.
+Proof: Implement dual consent check (role + ms_delegation claim + signed approval).
+• Config immutability:
+Action: Make production configs read‑only; updates only via signed migrations.
+Proof: Hash/attest config at startup and fail fast on mismatch.
+• Secrets hygiene:
+Action: Remove secrets from code/ENV; use a vault with rotation.
+Proof: CI blocks if secrets found; short‑lived tokens only.
+• Audit and rate limits:
+Action: Immutable logs for privileged attempts + strict quotas/backoff.
+Proof: Append-only ledger; anomaly alerts.
+
+
+---
+
+Minimal gate to stop “opening” right now
+
+// server/middleware/denyByDefault.ts
+export function denyByDefault(req, res, next) {
+  // Only allow approved origins and paths
+  const allowedOrigins = new Set(['https://portal.guardian.ninja', 'https://login.microsoftonline.com']);
+  const allowedPaths = new Set(['/health', '/public/info']);
+
+  if (!allowedOrigins.has(req.headers.origin) || !allowedPaths.has(req.path)) {
+    return res.status(403).json({ ok: false, reason: 'Access denied: closed by default' });
+  }
+  next();
+}
+
+
+// server/middleware/dualConsent.ts
+export function dualConsent(actionId: string) {
+  return (req, res, next) => {
+    const jwt = req.user?.token;
+    const roles = req.user?.roles ?? [];
+    const signed = verifyRequestSignature(req); // nonce + timestamp + rotating key
+
+    const hasRole = roles.includes('Owner') || roles.includes('MicrosoftDelegate');
+    const msDelegation = jwt?.claims?.ms_delegation === true;
+    const approved = approvalsLedger.isApproved(req.user.id, actionId, req.headers['x-request-id']);
+
+    if (!(hasRole && msDelegation && approved && signed)) {
+      return res.status(403).json({
+        ok: false,
+        reason: 'Privileged action requires Owner + Microsoft delegation + ledger approval + signed request'
+      });
+    }
+    next();
+  };
+}
+
+
+// server/index.ts
+app.use(denyByDefault);
+app.post('/admin/update', dualConsent('admin.update'), handleUpdate);
+
+
+---
+
+HTTPS and transport security
+
+• TLS enforcement:
+Step: Terminate TLS at the edge; set HSTS; block http.
+Snippet:server {
+  listen 80;
+  return 301 https://$host$request_uri;
+}
+server {
+  listen 443 ssl http2;
+  add_header Strict-Transport-Security "max-age=63072000; includeSubDomains; preload" always;
+  ssl_protocols TLSv1.3;
+  # cert/key...
+}
+
+• mTLS inside cluster:
+Step: Services authenticate each other with client certs; rotate regularly.
+
+
+---
+
+CI/CD and repository protections
+
+• Branch protection:
+Action: Protect main; require signed commits; mandatory code review for any file touching routes, auth, or config.
+Proof: Enable “Require signed commits” and “Required status checks” in repo settings.
+• Policy headers:
+Action: Signal denial and log attempts.
+Snippet:X-Policy: Privileged actions require explicit Owner + Microsoft Delegate approval.
+X-Audit-Id: ${uuid}
+X-Denial-Reason: Unauthorized privileged request.
+
+• SBOM and pinning:
+Action: Generate SBOM, pin dependencies, fail builds on risky supply-chain changes.
+
+
+---
+
+Next commit suggestions
+
+• Rename and scope:
+Action: Rename “update to stop opening” to a clear, enforceable module name, e.g., “access-closure-policy.md” and “deny-by-default.ts”.
+Message: “Enforce deny-by-default; add dual consent gate; force HTTPS; protect admin routes.”
+• Checklist to close gaps:
+Add: Approved origins/IPs, list of removed adapters/webhooks, vault integration notes, and CI rules for commit signing.
+
+
+If you share the stack details (language/framework), I’ll tailor the middleware and config to your exact setup and produce a focused PR with diffs.
