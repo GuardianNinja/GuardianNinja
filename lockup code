@@ -1,0 +1,20 @@
+// server/middleware/dualConsent.ts
+export function dualConsent(actionId: string) {
+  return (req, res, next) => {
+    const jwt = req.user?.token;
+    const roles = req.user?.roles ?? [];
+    const signed = verifyRequestSignature(req); // nonce + timestamp + rotating key
+
+    const hasRole = roles.includes('Owner') || roles.includes('MicrosoftDelegate');
+    const msDelegation = jwt?.claims?.ms_delegation === true;
+    const approved = approvalsLedger.isApproved(req.user.id, actionId, req.headers['x-request-id']);
+
+    if (!(hasRole && msDelegation && approved && signed)) {
+      return res.status(403).json({
+        ok: false,
+        reason: 'Privileged action requires Owner + Microsoft delegation + ledger approval + signed request'
+      });
+    }
+    next();
+  };
+}
