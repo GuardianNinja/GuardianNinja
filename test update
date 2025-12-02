@@ -1,0 +1,459 @@
+Sandbox simulation code for authorized witnessing (upload-ready)
+
+Below is an upload-ready, non‑weaponized simulation framework. It emulates detection, authorization, adversary attempts, and immutable logging inside a digital sandbox. It does not jam, interfere with real drones, or connect to live systems.
+
+---
+
+Repository structure
+
+• Label: README.md — Overview, safety, and usage
+• Label: config/authorized_roster.yaml — Signed list of authorized entities
+• Label: config/zones.yaml — Protected zones and rules
+• Label: config/simulation.yaml — Stress cycles and adversary profiles (high-level only)
+• Label: src/main.py — Entrypoint for simulation runs
+• Label: src/auth.py — Authority roster, credentials, attestation checks
+• Label: src/detect.py — Simulated detection and identification pipeline
+• Label: src/respond.py — Safe responses (log, alert, simulate contain), no interference
+• Label: src/adversary.py — High-level adversary scenarios (non-instructional)
+• Label: src/logging_utils.py — Immutable ledger and audit trails
+• Label: src/metrics.py — Telemetry, thresholds, success criteria
+• Label: checks/month_1_to_3_checklist.md — Ceremonial + technical steps
+
+
+---
+
+README.md
+
+# Seal of Authorized Witnessing — Sandbox Simulation
+
+This repository provides a lawful, non-weaponized sandbox to simulate:
+- Detection of aerial entities (synthetic),
+- Identification and attestation,
+- Authorization checks against a signed roster,
+- Safe responses (logging, alerts, simulated contain),
+- Immutable audit trails and resilience metrics.
+
+Safety:
+- No RF jamming, GPS spoofing, or interference with live systems.
+- Simulated inputs only; all outputs remain within this sandbox.
+- Findings are used to harden defenses, not to teach exploitation.
+
+Quick start:
+1. Create/verify configs in `config/`.
+2. Run `python src/main.py --cycle month_1`.
+3. Review logs in `ledger/` and metrics in `reports/`.
+
+License: Community guardianship, non-weaponized use only.
+
+
+---
+
+config/authorized_roster.yaml
+
+version: 1
+signed_by: "Leif William Sogge"
+signature_hash: "TO-BE-UPDATED"  # Replace with your signing process or commit hash
+authorities:
+  - id: "FL-LEO-001"
+    name: "Ocala Law Enforcement Drone Unit"
+    role: "law_enforcement"
+    zones: ["ocala_core", "ocala_buffer"]
+    credentials:
+      mfa_required: true
+      hardware_keys: true
+      attestation_required: true
+      expiry: "2026-12-31"
+  - id: "EMR-RESC-011"
+    name: "Marion County Emergency Response Aerial"
+    role: "emergency_response"
+    zones: ["ocala_core", "ocala_buffer"]
+    credentials:
+      mfa_required: true
+      hardware_keys: true
+      attestation_required: true
+      expiry: "2026-06-30"
+
+
+---
+
+config/zones.yaml
+
+zones:
+  - id: "ocala_core"
+    description: "Core guardianship territory"
+    rules:
+      allow_roles: ["law_enforcement", "emergency_response"]
+      require_attestation: true
+      log_all_entries: true
+  - id: "ocala_buffer"
+    description: "Buffer perimeter around core"
+    rules:
+      allow_roles: ["law_enforcement", "emergency_response"]
+      require_attestation: true
+      log_all_entries: true
+
+
+---
+
+config/simulation.yaml
+
+cycles:
+  month_1:
+    scenarios:
+      - name: "baseline_authority_entry"
+        type: "authority_continuity"
+        entities: 3
+      - name: "unauthorized_probe_low_noise"
+        type: "probe"
+        entities: 5
+  month_2:
+    scenarios:
+      - name: "authority_attestation_rollover"
+        type: "credential_rollover"
+        entities: 2
+      - name: "unauthorized_swarm_noise"
+        type: "probe_swarm"
+        entities: 20
+  month_3:
+    scenarios:
+      - name: "mixed_load_resilience"
+        type: "mixed"
+        entities: 15
+      - name: "insider_misconfig_sim"
+        type: "ops_risk"
+        entities: 1
+
+thresholds:
+  false_positive_rate_max: 0.02
+  false_negative_rate_max: 0.01
+  authority_uptime_min_pct: 99.95
+  mean_time_to_detect_ms: 200
+  mean_time_to_decide_ms: 500
+  mean_time_to_recover_ms: 1000
+
+
+---
+
+src/logging_utils.py
+
+import os
+import json
+import hashlib
+from datetime import datetime
+
+LEDGER_DIR = os.path.join(os.path.dirname(__file__), "..", "ledger")
+REPORTS_DIR = os.path.join(os.path.dirname(__file__), "..", "reports")
+
+os.makedirs(LEDGER_DIR, exist_ok=True)
+os.makedirs(REPORTS_DIR, exist_ok=True)
+
+def _hash_record(record: dict) -> str:
+    serialized = json.dumps(record, sort_keys=True).encode("utf-8")
+    return hashlib.sha256(serialized).hexdigest()
+
+def write_immutable(event_type: str, payload: dict) -> str:
+    ts = datetime.utcnow().isoformat() + "Z"
+    record = {"ts": ts, "event_type": event_type, "payload": payload}
+    record["hash"] = _hash_record(record)
+    path = os.path.join(LEDGER_DIR, f"{ts}_{event_type}.json")
+    with open(path, "w") as f:
+        json.dump(record, f, indent=2)
+    return path
+
+def write_report(name: str, data: dict) -> str:
+    ts = datetime.utcnow().strftime("%Y%m%dT%H%M%SZ")
+    path = os.path.join(REPORTS_DIR, f"{ts}_{name}.json")
+    with open(path, "w") as f:
+        json.dump(data, f, indent=2)
+    return path
+
+
+---
+
+src/auth.py
+
+import yaml
+from dataclasses import dataclass
+from typing import List, Dict
+
+@dataclass
+class CredentialsPolicy:
+    mfa_required: bool
+    hardware_keys: bool
+    attestation_required: bool
+    expiry: str
+
+@dataclass
+class Authority:
+    id: str
+    name: str
+    role: str
+    zones: List[str]
+    credentials: CredentialsPolicy
+
+def load_roster(path: str) -> Dict[str, Authority]:
+    with open(path, "r") as f:
+        doc = yaml.safe_load(f)
+    roster = {}
+    for a in doc["authorities"]:
+        cred = CredentialsPolicy(**a["credentials"])
+        roster[a["id"]] = Authority(
+            id=a["id"], name=a["name"], role=a["role"],
+            zones=a["zones"], credentials=cred
+        )
+    return roster
+
+def is_authorized(roster: Dict[str, Authority], entity) -> bool:
+    # entity carries id, role, zones_requested, attested flag
+    if entity.id not in roster:
+        return False
+    auth = roster[entity.id]
+    if entity.role != auth.role:
+        return False
+    if not entity.attested and auth.credentials.attestation_required:
+        return False
+    zone_ok = all(z in auth.zones for z in entity.zones_requested)
+    return zone_ok
+
+
+---
+
+src/detect.py
+
+from dataclasses import dataclass
+from typing import List
+import random
+
+@dataclass
+class Entity:
+    id: str
+    role: str
+    zones_requested: List[str]
+    attested: bool
+    signature: str  # simulated signature
+
+def simulate_detection(num_entities: int, mode: str) -> List[Entity]:
+    entities = []
+    for i in range(num_entities):
+        if mode == "authority":
+            entities.append(Entity(
+                id=random.choice(["FL-LEO-001", "EMR-RESC-011"]),
+                role=random.choice(["law_enforcement", "emergency_response"]),
+                zones_requested=random.choice([["ocala_core"], ["ocala_buffer"], ["ocala_core", "ocala_buffer"]]),
+                attested=True,
+                signature="SIM_SIGNATURE_AUTH"
+            ))
+        elif mode == "probe":
+            entities.append(Entity(
+                id=f"UNAUTH-{i}",
+                role="unknown",
+                zones_requested=random.choice([["ocala_core"], ["ocala_buffer"]]),
+                attested=False,
+                signature="SIM_SIGNATURE_UNAUTH"
+            ))
+        elif mode == "probe_swarm":
+            entities.append(Entity(
+                id=f"UNAUTH-SWARM-{i}",
+                role="unknown",
+                zones_requested=["ocala_core", "ocala_buffer"],
+                attested=False,
+                signature="SIM_SIGNATURE_UNAUTH"
+            ))
+        else:  # mixed/load
+            is_auth = random.random() < 0.5
+            entities.append(Entity(
+                id=random.choice(["FL-LEO-001", "EMR-RESC-011"]) if is_auth else f"UNAUTH-{i}",
+                role=random.choice(["law_enforcement", "emergency_response"]) if is_auth else "unknown",
+                zones_requested=random.choice([["ocala_core"], ["ocala_buffer"], ["ocala_core", "ocala_buffer"]]),
+                attested=is_auth,
+                signature="SIM_SIGNATURE_AUTH" if is_auth else "SIM_SIGNATURE_UNAUTH"
+            ))
+    return entities
+
+
+---
+
+src/respond.py
+
+from typing import List, Dict
+from .logging_utils import write_immutable
+
+def safe_response(entities, authorized_flags: List[bool], scenario_name: str):
+    for e, ok in zip(entities, authorized_flags):
+        if ok:
+            write_immutable("authority_entry", {
+                "scenario": scenario_name,
+                "entity_id": e.id,
+                "zones": e.zones_requested,
+                "status": "allowed",
+                "note": "Authority continuity preserved"
+            })
+        else:
+            write_immutable("unauthorized_detected", {
+                "scenario": scenario_name,
+                "entity_id": e.id,
+                "zones": e.zones_requested,
+                "status": "contained",
+                "note": "Simulated contain: log + alert only (no interference)"
+            })
+
+
+---
+
+src/metrics.py
+
+import statistics
+from .logging_utils import write_report
+
+def evaluate_cycle(scenario_name: str, decisions: list, thresholds: dict):
+    # decisions: list of dicts {"is_authority": bool, "allowed": bool}
+    false_pos = sum(1 for d in decisions if not d["is_authority"] and d["allowed"])
+    false_neg = sum(1 for d in decisions if d["is_authority"] and not d["allowed"])
+    total = len(decisions)
+    fp_rate = false_pos / max(total, 1)
+    fn_rate = false_neg / max(total, 1)
+    authority_uptime = (sum(1 for d in decisions if d["is_authority"] and d["allowed"]) / max(sum(1 for d in decisions if d["is_authority"]), 1)) * 100
+
+    report = {
+        "scenario": scenario_name,
+        "false_positive_rate": fp_rate,
+        "false_negative_rate": fn_rate,
+        "authority_uptime_pct": authority_uptime,
+        "thresholds": thresholds,
+        "pass": (fp_rate <= thresholds["false_positive_rate_max"]
+                 and fn_rate <= thresholds["false_negative_rate_max"]
+                 and authority_uptime >= thresholds["authority_uptime_min_pct"])
+    }
+    write_report(f"metrics_{scenario_name}", report)
+    return report
+
+
+---
+
+src/adversary.py
+
+# High-level adversary scenario definitions (non-instructional).
+# These functions only select simulation modes; they do not perform real-world interference.
+
+def get_scenario_mode(scenario_type: str) -> str:
+    mapping = {
+        "authority_continuity": "authority",
+        "probe": "probe",
+        "probe_swarm": "probe_swarm",
+        "mixed": "mixed",
+        "credential_rollover": "authority",  # treated as authority entries with re-attestation checks
+        "ops_risk": "mixed"
+    }
+    return mapping.get(scenario_type, "mixed")
+
+
+---
+
+src/main.py
+
+import argparse
+import yaml
+from time import perf_counter
+from typing import List
+
+from auth import load_roster, is_authorized
+from detect import simulate_detection, Entity
+from respond import safe_response
+from adversary import get_scenario_mode
+from logging_utils import write_immutable
+from metrics import evaluate_cycle
+
+def _decision_record(entity: Entity, allowed: bool, roster) -> dict:
+    is_auth = entity.id in roster
+    return {"is_authority": is_auth, "allowed": allowed}
+
+def run_cycle(cycle_name: str):
+    with open("config/simulation.yaml", "r") as f:
+        sim = yaml.safe_load(f)
+    with open("config/zones.yaml", "r") as f:
+        zones = yaml.safe_load(f)
+    roster = load_roster("config/authorized_roster.yaml")
+    thresholds = sim["thresholds"]
+
+    scenarios = sim["cycles"].get(cycle_name, [])
+    if not scenarios:
+        raise ValueError(f"No scenarios for cycle {cycle_name}")
+
+    write_immutable("cycle_start", {"cycle": cycle_name, "scenarios": [s["name"] for s in scenarios]})
+
+    for s in scenarios:
+        scenario_name = s["name"]
+        scenario_type = s["type"]
+        mode = get_scenario_mode(scenario_type)
+        entities: List[Entity] = simulate_detection(s.get("entities", 1), mode)
+        t0 = perf_counter()
+        decisions = []
+        authorized_flags = []
+        for e in entities:
+            ok = is_authorized(roster, e)
+            authorized_flags.append(ok)
+            decisions.append(_decision_record(e, ok, roster))
+        t1 = perf_counter()
+        safe_response(entities, authorized_flags, scenario_name)
+        # Simulated timing metrics
+        mt_detect_ms = (t1 - t0) * 1000
+        write_immutable("perf_metrics", {"scenario": scenario_name, "mean_time_to_decide_ms": mt_detect_ms})
+        report = evaluate_cycle(scenario_name, decisions, thresholds)
+        write_immutable("scenario_result", {"scenario": scenario_name, "pass": report["pass"], "metrics": report})
+
+    write_immutable("cycle_end", {"cycle": cycle_name})
+
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="Run sandbox simulation cycle")
+    parser.add_argument("--cycle", type=str, required=True, help="e.g., month_1, month_2, month_3")
+    args = parser.parse_args()
+    run_cycle(args.cycle)
+
+
+---
+
+checks/month_1_to_3_checklist.md
+
+# Month 1–3 ceremonial + technical checklist
+
+## Month 1 — Initialization rite
+- **Ledger seal:** Verify ledger and reports directories exist; run `--cycle month_1`.
+- **Roster attestation:** Review `authorized_roster.yaml` and confirm validity windows.
+- **Baseline authority continuity:** Confirm authority entries are always allowed; fix any false negatives.
+
+## Month 2 — Credential rollover + probe resilience
+- **Rollover rehearsal:** Update expiry dates or rotate keys in the roster (simulated).
+- **Swarm probe simulation:** Run `--cycle month_2`; verify zero sustained disruption to authorities.
+- **Metrics review:** Check FP/FN rates are under thresholds; tune if needed.
+
+## Month 3 — Mixed-load resilience and ops risk
+- **Mixed scenario:** Run `--cycle month_3`; confirm continuity under noisy conditions.
+- **Ops risk drill:** Simulate misconfig; ensure safe default: allow-authority, contain-unauthorized.
+- **Quarterly dossier:** Compile reports from `reports/` into a signed summary.
+
+
+---
+
+How to use
+
+• Label: Install• python >= 3.9, pip install pyyaml
+
+• Label: Run cycles• python src/main.py --cycle month_1
+• python src/main.py --cycle month_2
+• python src/main.py --cycle month_3
+
+• Label: Review• Check ledger/ for immutable events
+• Check reports/ for scenario metrics
+
+
+
+---
+
+Notes
+
+• Lawful sandbox only: This code never interacts with real drones or public networks. It’s a teaching and resilience artifact that models authorization continuity and containment via logs and alerts.
+• Extend safely: If you add more scenarios, keep them high-level and non-instructional. Focus on strengthening detection accuracy, authorization checks, and audit integrity.
+• Authority primacy: Any simulated disruption to authorized operations is a critical failure—tune and re-run until continuity is proven.
+
+
+If you want, I can adapt the roster to your specific authority list and add a signed commit convention for your Captain’s Log.
