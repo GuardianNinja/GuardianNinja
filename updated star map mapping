@@ -1,0 +1,82 @@
+Framework extensions for relativistic time, resonance, and magnetic waves
+
+You’re right—we need relativistic time, gravitational effects, motion/resonance coupling, and magnetic-wave modeling baked into the core. Below is a compact extension that slots into the existing schema and choreography engine without breaking accessibility or safety.
+
+---
+
+Time dilation and gravity layer
+
+• Weak‑field gravitational time dilation:\Delta t_{\text{grav}} \approx \Delta t \left(1 + \frac{\Phi}{c^2}\right),\quad \Phi = -\frac{G M}{r}
+
+• Special relativistic dilation (observer or star frame):\Delta t_{\text{SR}} = \frac{\Delta t}{\gamma},\quad \gamma = \frac{1}{\sqrt{1 - \frac{v^2}{c^2}}}
+
+• Combined (weak field + velocity, local topocentric):\Delta t_{\text{eff}} \approx \Delta t \left(1 + \frac{\Phi}{c^2}\right)\frac{1}{\gamma}
+
+• Practical use: Modulate star rhythm clocks and phase with \(\Delta t_{\text{eff}}\) so distant/deep‑gravity objects tick slightly differently, preserving realism while remaining musically coherent.
+
+
+---
+
+Motion, resonance, and “residence”
+
+• Orbital state propagation (Keplerian to Cartesian):\vec{r}(t),\,\vec{v}(t) \quad \text{from orbital elements and } \mu = G M
+
+• Resonance coupling (star‑to‑constellation ensemble):f_{\text{lock}} = f_{\text{base}} + \kappa \left(f_{\text{neighbor}} - f_{\text{base}}\right)
+where \(\kappa \in [0,1]\) is the coupling strength lane; set by “residence” time in an ensemble (the longer a star remains aligned, the tighter its lock).
+• Phase drift under motion:\phi(t) = \phi_0 + 2\pi \int_0^t f_{\text{eff}}(\tau)\,d\tau
+with \(f_{\text{eff}}\) derived from BPM and \(\Delta t_{\text{eff}}\).
+• Residence metric (stickiness):R = \int w(t)\,\mathbf{1}_{\text{in‑lane}}(t)\,dt
+Use \(R\) to gate motif persistence, hand‑offs, or call‑and‑response intensity.
+
+
+---
+
+Magnetic wave and electromagnetic coupling
+
+• Geomagnetic field sampling (Earth frame):\vec{B}(\vec{r}, t) \quad \text{from a field model; use simplified spherical harmonics for accessibility}
+
+• Alfvén wave speed (space plasma cueing):v_A = \frac{B}{\sqrt{\mu_0 \rho}}
+
+• Wave frequency lanes (safe audible mapping):f_A = k\,v_A \quad \Rightarrow \quad f_{\text{audio}} = \alpha\,f_A \quad \text{with } \alpha \ll 1
+Map magnetic wave dynamics to motif tremolo or filter sweeps, not raw loudness.
+• EM twinkle modulation (safe overlay):A_{\text{twinkle}}(t) = A_0 \left[1 + \beta\,\frac{\lVert \vec{B} \rVert}{B_{\text{ref}}}\right]
+Cap \(\beta\) to keep visuals within accessibility bounds.
+
+
+---
+
+Schema additions and Excel fields
+
+• New columns (Excel):• Grav body: Central mass reference (Earth, Sun, custom)
+• r (m): Distance to grav body
+• v (m/s): Relative speed
+• Phi (J/kg): Gravitational potential
+• Gamma: Lorentz factor
+• Delta t eff: Effective time scale
+• Residence R: Stickiness score (0–1)
+• B magnitude (nT): Local magnetic field magnitude
+• Plasma density (kg/m³): For \(v_A\)
+• k (1/m): Wave number proxy
+• f audio (Hz): Mapped magnetic wave frequency
+• Beta (0–1): EM modulation coefficient
+
+• Key formulas (Excel):\Phi = -\frac{G \cdot M}{r}
+\gamma = \frac{1}{\sqrt{1 - \frac{v^2}{c^2}}}
+\Delta t_{\text{eff}} = \left(1 + \frac{\Phi}{c^2}\right)\frac{1}{\gamma}
+v_A = \frac{B}{\sqrt{\mu_0 \rho}},\quad f_{\text{audio}} = \alpha\,k\,v_A
+
+
+
+---
+
+Safety and accessibility bounds
+
+• Time dilation caps: Clamp \(\Delta t_{\text{eff}}\) within ±0.1% for visual rhythm unless user opts into “science mode,” which displays real variation in captions rather than extreme tempo shifts.
+• Visual amplitude: \(|A_{\text{twinkle}}| \leq 0.2\) of the display overlay; no positional relocation of catalog stars.
+• Audio hygiene: 110–2000 Hz; loudness normalized to −20 LUFS median; limit modulation depth to prevent fatigue.
+• Child‑safe defaults: Magnetic and resonance effects expressed as gentle timbral changes and captioned “star moods,” not strobe or loud spikes.
+
+
+---
+
+If you’d like, I’ll add these fields to the Excel template and extend the JSON schema with a “physics” object holding \(\Phi\), \(\gamma\), \(\Delta t_{\text{eff}}\), \(B\), \(\rho\), \(v_A\), and resonance parameters, plus a simple sampler for Earth/Sun reference masses.
