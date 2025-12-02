@@ -1,0 +1,48 @@
+import numpy as np
+import matplotlib.pyplot as plt
+
+def equilateral_triangle(center, size, rotation=0):
+    # Generate vertices of an equilateral triangle
+    angles = np.array([0, 2*np.pi/3, 4*np.pi/3]) + rotation
+    x = center[0] + size * np.cos(angles)
+    y = center[1] + size * np.sin(angles)
+    return x, y
+
+# Collapse function
+def collapse_size(s0, alpha, t):
+    return s0 * (1 - np.exp(-alpha * t))
+
+# DNA helix function
+def dna_helix(length=100, amplitude=0.2, pitch=0.3):
+    z = np.linspace(0, length, 500)
+    x1 = amplitude * np.cos(pitch * z)
+    y1 = amplitude * np.sin(pitch * z)
+    x2 = -x1
+    y2 = -y1
+    return x1, y1, x2, y2, z
+
+# Parameters
+s0 = 5
+alpha = 0.5
+times = [0, 1, 5]  # stages of collapse
+
+fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+
+for i, t in enumerate(times):
+    size = collapse_size(s0, alpha, t)
+    for rot in [0, 2*np.pi/3, 4*np.pi/3]:
+        x, y = equilateral_triangle((0,0), size, rotation=rot)
+        axes[i].plot(np.append(x, x[0]), np.append(y, y[0]), 'b-')
+    axes[i].set_title(f"Collapse stage t={t}")
+    axes[i].set_aspect('equal')
+    axes[i].axis('off')
+
+# DNA trail visualization
+x1, y1, x2, y2, z = dna_helix()
+fig2 = plt.figure(figsize=(8,6))
+ax = fig2.add_subplot(111, projection='3d')
+ax.plot(x1, y1, z, 'r-', label='DNA strand 1')
+ax.plot(x2, y2, z, 'g-', label='DNA strand 2')
+ax.legend()
+ax.set_title("DNA Firewall Trail")
+plt.show()
