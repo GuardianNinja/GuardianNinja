@@ -1,0 +1,272 @@
+Privacy-preserving dna analysis method in code
+
+Here’s a functional, upload-ready example focused on educational, lineage-safe analysis. It avoids personal/forensic identifiers and uses anonymized sequences. It computes k‑mer frequencies, GC content, and simple motif scans with clear, testable structure.
+
+---
+
+Overview of the method
+
+• Goal: Analyze DNA sequences for GC content, k‑mer distribution, and motif presence using anonymized inputs.
+• Inputs: FASTA files with non-identifying sample names.
+• Outputs: CSV summaries and JSON reports suitable for audit trails and GitHub CI.
+• Ethics: No inference of identity, lineage matching, or genealogy. Use only consented or synthetic datasets.
+
+
+---
+
+Suggested repository structure
+
+• Label: Root layout• README.md — purpose, ethics, and usage
+• data/ — sample FASTA (synthetic or open, non-identifying)
+• src/ — analysis code
+• reports/ — generated outputs (CSV, JSON)
+• tests/ — unit tests
+• .github/workflows/ci.yml — optional CI for validation
+
+
+
+---
+
+Core math (for clarity)
+
+• Label: GC content\text{GC\%} = \frac{\text{count}(G) + \text{count}(C)}{\text{sequence length}} \times 100
+
+• Label: K‑mer frequencyf(s_k) = \frac{\text{count of k-mer } s_k}{\sum\limits_{\text{all k-mers}} \text{counts}}
+
+• Label: Motif scan (exact match)\text{hits} = \left|\left\{ i \mid \text{seq}[i:i+m] = \text{motif} \right\}\right|
+
+
+
+---
+
+Code: functional, ready to upload
+
+# src/dna_analysis.py
+from pathlib import Path
+import json
+import csv
+from collections import Counter
+
+VALID = set("ACGTN")
+
+def read_fasta(path):
+    """Simple FASTA reader; yields (header, sequence)."""
+    header, seq = None, []
+    with open(path, "r") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            if line.startswith(">"):
+                if header is not None:
+                    yield header, "".join(seq).upper()
+                header = line[1:].strip()
+                seq = []
+            else:
+                seq.append(line)
+        if header is not None:
+            yield header, "".join(seq).upper()
+
+def sanitize(seq):
+    """Keep only A,C,G,T,N to avoid downstream surprises."""
+    return "".join(ch for ch in seq if ch in VALID)
+
+def gc_content(seq):
+    if not seq:
+        return 0.0
+    g = seq.count("G")
+    c = seq.count("C")
+    return ((g + c) / len(seq)) * 100.0
+
+def kmer_counts(seq, k=5):
+    if k <= 0 or len(seq) < k:
+        return Counter()
+    return Counter(seq[i:i+k] for i in range(len(seq) - k + 1))
+
+def kmer_frequencies(counts):
+    total = sum(counts.values())
+    if total == 0:
+        return {k: 0.0 for k in counts}
+    return {k: v / total for k, v in counts.items()}
+
+def motif_scan(seq, motif):
+    if not motif or len(seq) < len(motif):
+        return {"count": 0, "positions": []}
+    m = motif.upper()
+    hits, pos = 0, []
+    for i in range(len(seq) - len(m) + 1):
+        if seq[i:i+len(m)] == m:
+            hits += 1
+            pos.append(i)
+    return {"count": hits, "positions": pos}
+
+def analyze_fasta(input_fasta, k=5, motifs=None, out_dir="reports"):
+    motifs = motifs or ["ATG", "TATA", "CGCG"]
+    Path(out_dir).mkdir(parents=True, exist_ok=True)
+
+    csv_path = Path(out_dir) / "summary.csv"
+    json_path = Path(out_dir) / "summary.json"
+
+    rows = []
+    json_report = []
+
+    for header, raw_seq in read_fasta(input_fasta):
+        seq = sanitize(raw_seq)
+        gc = gc_content(seq)
+        kcounts = kmer_counts(seq, k=k)
+        kfreqs = kmer_frequencies(kcounts)
+        motif_results = {m: motif_scan(seq, m) for m in motifs}
+
+        rows.append({
+            "sample": header,
+            "length": len(seq),
+            "gc_percent": round(gc, 4),
+            "k": k,
+            "distinct_kmers": len(kcounts),
+        })
+        json_report.append({
+            "sample": header,
+            "length": len(seq),
+            "gc_percent": gc,
+            "kmer_frequencies": kfreqs,
+            "motifs": motif_results,
+        })
+
+    # Write CSV (summary)
+    with open(csv_path, "w", newline="") as f:
+        writer = csv.DictWriter(f, fieldnames=["sample", "length", "gc_percent", "k", "distinct_kmers"])
+        writer.writeheader()
+        for r in rows:
+            writer.writerow(r)
+
+    # Write JSON (details)
+    with open(json_path, "w") as f:
+        json.dump(json_report, f, indent=2)
+
+    return {"csv": str(csv_path), "json": str(json_path)}
+
+if __name__ == "__main__":
+    # Example run: python src/dna_analysis.py
+    # Make sure you have data/sample.fasta with anonymized sequences.
+    result = analyze_fasta("data/sample.fasta", k=5, motifs=["ATG", "TATA", "CGCG"])
+    print("Reports:", result)
+
+
+# tests/test_dna_analysis.py
+import os
+from src.dna_analysis import gc_content, kmer_counts, kmer_frequencies, motif_scan
+
+def test_gc_content_basic():
+    assert round(gc_content("ACGT"), 2) == 50.0
+    assert round(gc_content("AAAA"), 2) == 0.0
+    assert round(gc_content("CCCC"), 2) == 100.0
+
+def test_kmer_counts_and_freqs():
+    counts = kmer_counts("ACGTACGT", k=2)
+    freqs = kmer_frequencies(counts)
+    assert sum(counts.values()) == 7
+    assert round(sum(freqs.values()), 6) == 1.0
+
+def test_motif_scan():
+    res = motif_scan("ATGATGAAATG", "ATG")
+    assert res["count"] == 3
+    assert res["positions"] == [0, 3, 9]
+
+
+# README.md
+
+## DNA analysis (lineage-safe, educational)
+
+This repository provides a privacy-preserving DNA analysis workflow:
+- GC% calculation
+- K-mer frequency distribution
+- Exact motif scans
+
+### Ethics and usage
+- Use anonymized or synthetic sequences.
+- Do not attempt identity inference, genealogy reconstruction, or forensic matching.
+- This is for education, research, and protocol testing.
+
+### Quickstart
+1. Create environment:
+
+
+python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate pip install -r requirements.txt  # (empty or add pytest)
+
+2. Add data:
+- Put an anonymized FASTA at `data/sample.fasta`.
+3. Run analysis:
+
+
+python src/dna_analysis.py
+
+4. See outputs:
+- `reports/summary.csv`
+- `reports/summary.json`
+
+### Testing
+
+
+pytest
+
+
+### Configuration
+- Edit motifs in `src/dna_analysis.py` (list of strings).
+- Change `k` to adjust k-mer size (e.g., 3–7).
+
+### License
+MIT — keep it kind and lineage-safe.
+
+
+# .github/workflows/ci.yml
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install pytest
+      - name: Run tests
+        run: pytest
+
+
+---
+
+How to upload to GitHub
+
+• Label: Create repo• New repository: “dna-analysis-lineage-safe” (or your preferred name).
+
+• Label: Add files• Add src/, tests/, data/ (with sample), reports/ (empty), README.md, .github/workflows/ci.yml.
+
+• Label: First commit message• “Create global protocol test — lineage-safe DNA analysis (GC, k‑mers, motifs).”
+
+• Label: Branching• Use main for stable; open feature/motif-tuning for motif experiments.
+
+• Label: Transparency seal• Add a CAPTAINS_LOG.md noting your intention: stability, privacy, and communal stewardship.
+
+
+
+---
+
+Optional enhancements
+
+• Label: Sliding-window GC%
+Compute GC% in windows (e.g., 200 bp) to visualize local variation.
+• Label: Reverse‑complement handling
+Count k‑mers with canonical pairing to merge strand complements.
+• Label: CSV + plots
+Add simple plots (no personal data), e.g., k‑mer histograms.
+
+
+If you want, I can tailor the motifs, add sliding-window analysis, or generate a minimal synthetic FASTA to include in data/ for immediate runs.
