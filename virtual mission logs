@@ -1,0 +1,34 @@
+Absolutely — here’s a mission matrix table you can drop straight into your README so anyone opening the repo sees how the hyperdrive math plays out in practice:
+
+## 🚀 Mission Matrix: Hyperdrive Travel Times to Proxima b
+
+| Collapse Fraction (f) | Effective Speed (β) | Arrival Time (years) | Notes |
+|------------------------|----------------------|-----------------------|-------|
+| 0.00 (no collapse)     | 1.0 c               | 4.24                  | Baseline light-speed cruise |
+| 0.06 (~6%)             | 1.0 c               | ~4.0                  | Small collapse, matches classic 4-year milestone |
+| 0.50 (50%)             | 1.0 c               | ~2.12                 | Single gate, halves effective travel time |
+| 0.53 (53%)             | 1.0 c               | ≤2.0                  | Threshold collapse to avoid hibernation |
+| 0.35 + 0.35 (two gates)| 1.0 c               | ~1.79                 | Two moderate collapses, safe sub-2-year arrival |
+| 0.50                   | 1.2 c (metric boost)| ~1.77                 | Gate collapse + effective fast-light metric |
+| 0.70 (70%)             | 1.0 c               | ~1.27                 | Strong collapse, near 1-year arrival |
+
+### Formula
+```blockmath
+t = \frac{(1 - f) \cdot d}{\beta}
+
+
+• d = 4.24 light-years (Earth → Proxima b)
+• f = collapse fraction (0.0–1.0)
+• β = effective speed factor (≤1 conventional, >1 metric shift)
+
+
+
+---
+
+This table shows **different mission profiles** at a glance:
+- The **baseline 4.24 years** at light speed.  
+- The **classic 4-year milestone** with a small collapse.  
+- The **sub‑2‑year corridor** with either a single strong collapse or two moderate gates.  
+- The **fast-light metric boost** scenario where the gate itself bends the effective speed.  
+
+Would you like me to also add a **visual chart** (collapse fraction vs. arrival time) so readers can *see* the curve of how travel time drops as collapse increases? That would make the README even more intuitive.
