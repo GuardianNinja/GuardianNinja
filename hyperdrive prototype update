@@ -1,0 +1,194 @@
+Hyperdrive prototype refinement plan
+
+Let’s turn your prototype into a crisp, testable framework with clear interfaces, safety envelopes, and validation paths. Below is a focused plan you can implement in iterative commits without bloating the repo.
+
+---
+
+Architecture and modules
+
+• Core math engine:
+Encapsulate travel time and collapse math with pure functions.• hyperdrive/core/metrics.py
+• hyperdrive/core/collapse.py
+
+• Gate logic and consent:
+Gate activation based on readiness, environment, and stability thresholds.• hyperdrive/gate/consent.py
+• hyperdrive/gate/stability.py
+
+• Control loop and bubble:
+Dual-loop stabilization for stream lock (outer) and ship lock (inner).• hyperdrive/control/outer_stream_lock.py
+• hyperdrive/control/inner_ship_lock.py
+
+• Safety and fail-safes:
+Hard limits, quench behavior, safe drop to normal space.• hyperdrive/safety/limits.py
+• hyperdrive/safety/failsafe.py
+
+• Telemetry and logs:
+Structured events, jitter budgets, phase slips, readiness changes.• hyperdrive/telemetry/events.py
+• hyperdrive/telemetry/recorders.py
+
+
+
+Sources: Establish a minimal dependency footprint; prefer standard library plus typed models.
+
+---
+
+Readiness and stability definitions
+
+• Readiness function:
+Formalize consent as a composable signal.# hyperdrive/gate/consent.py
+from dataclasses import dataclass
+from typing import Callable
+
+@dataclass(frozen=True)
+class Readiness:
+    planet: float   # 0.0–1.0
+    people: float   # 0.0–1.0
+    civ: float      # 0.0–1.0
+
+    def score(self) -> float:
+        # geometric mean discourages any weak link
+        from math import prod
+        return (self.planet * self.people * self.civ) ** (1/3)
+
+    def is_open(self, threshold: float = 0.8) -> bool:
+        return self.score() >= threshold
+
+• Stability envelope:
+Define tolerances for shear, phase slip, and jitter.# hyperdrive/gate/stability.py
+@dataclass(frozen=True)
+class Stability:
+    shear_max: float        # N/m^2
+    phase_slip_max: float   # radians
+    jitter_max: float       # meters / arcsec
+
+    def within_limits(self, s: "StabilitySample") -> bool:
+        return (
+            s.shear <= self.shear_max and
+            s.phase_slip <= self.phase_slip_max and
+            s.jitter <= self.jitter_max
+        )
+
+@dataclass
+class StabilitySample:
+    shear: float
+    phase_slip: float
+    jitter: float
+
+
+
+---
+
+Core equations and interfaces
+
+• Travel time:
+Single source of truth for mission timing.# hyperdrive/core/metrics.py
+def travel_time_years(distance_ly: float, collapse_fraction: float, beta: float) -> float:
+    """
+    t = ((1 - f) * d) / beta
+    distance_ly: e.g., 4.24 for Proxima b
+    collapse_fraction: 0.0–1.0
+    beta: effective speed factor (<=1 conventional, >1 metric shift)
+    """
+    assert 0.0 <= collapse_fraction < 1.0, "collapse_fraction must be in [0,1)"
+    assert beta > 0.0, "beta must be positive"
+    return ((1.0 - collapse_fraction) * distance_ly) / beta
+
+• Multi-gate chain:
+Product of residual path segments conditioned by gate openings.# hyperdrive/core/collapse.py
+def chain_time_years(distance_ly: float, collapses: list[float], betas: list[float], opens: list[bool]) -> float:
+    assert len(collapses) == len(betas) == len(opens)
+    residual = distance_ly
+    total_time = 0.0
+    for f, b, open_ in zip(collapses, betas, opens):
+        segment = residual if open_ else residual  # gate opens reduces residual after segment
+        time_segment = ((1.0 - (f if open_ else 0.0)) * segment) / b
+        total_time += time_segment
+        residual = (1.0 - (f if open_ else 0.0)) * residual
+    return total_time
+
+• Gate controller:
+Marries readiness and stability; refuses to open if any check fails.# hyperdrive/control/outer_stream_lock.py
+def should_open_gate(readiness: Readiness, stability: Stability, sample: StabilitySample, threshold: float = 0.8) -> bool:
+    return readiness.is_open(threshold) and stability.within_limits(sample)
+
+
+
+---
+
+Safety, fail-safes, and telemetry
+
+• Auto-quench logic:
+Neutralize thrust, re-harden bubble, or safe-drop.# hyperdrive/safety/failsafe.py
+from enum import Enum
+
+class QuenchMode(Enum):
+    HARDEN = "harden_bubble"
+    DROP = "safe_drop_to_normal_space"
+
+def auto_quench(stability: Stability, sample: StabilitySample) -> QuenchMode | None:
+    if not stability.within_limits(sample):
+        # Pick drop vs. harden based on severity
+        severity = (
+            (sample.shear / stability.shear_max) +
+            (sample.phase_slip / stability.phase_slip_max) +
+            (sample.jitter / stability.jitter_max)
+        )
+        return QuenchMode.DROP if severity > 2.0 else QuenchMode.HARDEN
+    return None
+
+• Structured telemetry events:
+Keep logs analyzable and lineage-safe.# hyperdrive/telemetry/events.py
+@dataclass
+class TelemetryEvent:
+    ts: float                # mission time seconds
+    type: str                # e.g., "GATE_OPEN", "QUENCH", "PHASE_SLIP"
+    data: dict               # payload with metrics
+
+def log_event(record: list[TelemetryEvent], evt: TelemetryEvent):
+    record.append(evt)
+
+
+
+---
+
+Testing, validation, and docs
+
+• Unit tests:• Core math: Travel time, multi-gate chains, edge cases.
+• Consent: Threshold behavior; weak-link scenarios.
+• Stability: Limit checks; auto-quench decisions.
+
+• Scenario tests (Proxima b):• Milestone A: f=0.06, beta=1.0 → ~4.0 years
+• Milestone B: f=0.53, beta=1.0 → ≤2.0 years
+• Milestone C: Two gates f1=f2=0.35, beta=1.0 → ~1.79 years
+• Refusal case: Readiness below threshold → gate stays closed; time reverts to baseline.
+
+• README structure:• Overview: Concept, ethics, consent gate.
+• Math: Core equation, multi-gate chain.
+• Safety: Stability envelope, auto-quench.
+• Usage: Minimal code sample; config via JSON/YAML.
+• Roadmap: Validation plan; contributions guideline.
+# Hyperdrive Proto
+
+A consent-gated resonance travel model. Time collapses only when worlds are ready.
+
+## Core equation
+t = ((1 - f) * d) / beta
+
+- d: distance (ly)
+- f: collapse fraction
+- beta: effective speed factor
+
+## Consent gate
+Geometric mean readiness with threshold; no readiness, no gate.
+
+## Safety
+Stability envelope enforces phase, shear, jitter; auto-quench protects corridor.
+
+## Quick start
+
+
+
+
+---
+
+If you share the current file layout or a snippet of your proto, I can tailor these modules to your exact structure and push a concise PR plan with commit messages ready to go.
