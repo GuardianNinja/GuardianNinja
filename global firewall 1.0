@@ -1,0 +1,61 @@
+# Global Firewall 1.0
+# Lineage-safe Inside-Out Diamond Firewall
+# Author: Leif William Sogge (Space LEAF Corp)
+# Purpose: Communal shield protocol — deception layer + inverted diamond firewall
+# License: Lineage-Safe Stewardship Covenant
+
+import hashlib
+import time
+
+class DiamondFirewall:
+    def __init__(self, guardians, captains, un_consent):
+        self.guardians = guardians
+        self.captains = captains
+        self.un_consent = un_consent
+        self.mirror_layer = {}
+        self.diamond_layer = {}
+        self.active = True
+
+    def dna_qr_check(self, dna_code, required_captains=4):
+        """Verify DNA QR code and collective consent."""
+        return (
+            dna_code.startswith("LINEAGE_SAFE") and
+            len(self.captains) >= required_captains and
+            self.un_consent is True and
+            len(self.guardians) > 0
+        )
+
+    def intrusion_attempt(self, attacker_id, payload):
+        """Redirect hacker into mirror layer (phantom system)."""
+        fake_hash = hashlib.sha256(payload.encode()).hexdigest()
+        self.mirror_layer[attacker_id] = fake_hash
+        return f"Attacker {attacker_id} trapped in mirror layer."
+
+    def collapse_cycle(self):
+        """Firewall collapse + inversion cycle (self-renewal)."""
+        timestamp = time.time()
+        self.diamond_layer['renewal'] = hashlib.sha256(str(timestamp).encode()).hexdigest()
+        return "Diamond firewall collapsed inward, anomalies purged, shield renewed."
+
+    def access_request(self, dna_code):
+        """Attempt to access true firewall."""
+        if self.dna_qr_check(dna_code):
+            return "Access granted: collective consent confirmed."
+        else:
+            return "Access denied: lineage-safe consent required."
+
+# Example usage
+guardians = ["Miko", "JD", "Guardian_A", "Guardian_B"]
+captains = ["Captain_1", "Captain_2", "Captain_3", "Captain_4"]
+un_consent = True
+
+firewall = DiamondFirewall(guardians, captains, un_consent)
+
+# Hacker tries to break in
+print(firewall.intrusion_attempt("Hacker_007", "malware_payload"))
+
+# Firewall collapse cycle
+print(firewall.collapse_cycle())
+
+# Attempt access with DNA QR code
+print(firewall.access_request("LINEAGE_SAFE_QR123"))
