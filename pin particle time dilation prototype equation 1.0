@@ -1,0 +1,73 @@
+Pin particle definition
+
+A “pin particle” is a technically defined composite entity whose local dynamics and timekeeping encode mass, velocity, shape, structure, and gravitational environment into a single dilation map. It represents a compact probe carrying the full state of an object’s mass–energy distribution and orientation, producing a unified time dilation and “mass dilation” factor along its worldline.
+
+---
+
+State variables and effective properties
+
+• Mass–energy content:M_{\text{grav}}^{\text{eff}} \;=\; M_{\text{baryon}} \;+\; \frac{E_{\text{bind}} + E_{\text{struct}} + E_{\text{rot}}}{c^2}
+
+• Binding energy (shape-adjusted):E_{\text{bind}} \;\approx\; -\,\kappa_{\text{shape}}\,\frac{G M_{\text{baryon}}^2}{R_{\text{char}}}
+
+• Rotation energy:E_{\text{rot}} \;=\; \frac{1}{2}\,I\,\Omega^2
+
+• Characteristic radius (orientation-aware):R_{\text{char}}^{\text{eff}}(\hat{n}) \;=\; \frac{R_{\text{vol}}}{1 + \beta_{\text{quad}}(\hat{n})}
+
+• Quadrupole correction:\beta_{\text{quad}}(\hat{n}) \;=\; \frac{Q_{ij}\,\hat{n}_i \hat{n}_j}{2\,M_{\text{grav}}^{\text{eff}}\,R_{\text{vol}}^2}
+
+• Kinematic state:\gamma(v) \;=\; \frac{1}{\sqrt{1 - \frac{v^2}{c^2}}}
+
+
+
+---
+
+Master dilation equation across space and time
+
+• Unified dilation factor (pin particle):{
+\mathcal{D}_{\text{pin}}(\vec{x}, \hat{n}, v) 
+\;=\; \gamma(v)\;
+\left[\,1 - \frac{2G\,M_{\text{grav}}^{\text{eff}}(\vec{x})}{c^2\,R_{\text{char}}^{\text{eff}}(\hat{n})}\,\right]^{-1/2}
+}
+
+• Proper time evolution (worldline of the pin particle):d\tau \;=\; \frac{dt}{\mathcal{D}_{\text{pin}}(\vec{x}, \hat{n}, v)}
+
+• Effective “mass dilation” mapping (bookkeeping of energy scaling):m_{\text{dil}}(\vec{x}, \hat{n}, v) \;=\; \mathcal{D}_{\text{pin}}(\vec{x}, \hat{n}, v)\; m_0
+
+• Spacetime line element (effective, along the pin path):ds^2 \;=\; -\,c^2\,d\tau^2 \;+\; d\ell^2
+\quad\text{with}\quad
+d\tau \;=\; \frac{dt}{\mathcal{D}_{\text{pin}}}
+
+
+
+---
+
+Components and ratios inside the equation
+
+• Compactness ratio (gravity–shape fusion):\mathcal{C}_{\text{eff}}(\hat{n}) \;=\; \frac{G\,M_{\text{grav}}^{\text{eff}}}{c^2\,R_{\text{char}}^{\text{eff}}(\hat{n})}
+
+• Structural energy term (rigidity, stress, EOS):E_{\text{struct}} \;=\; \int \sigma_{ij}\,\epsilon_{ij}\,dV
+
+• Volume-equivalent radius:R_{\text{vol}} \;=\; \left(\frac{3V}{4\pi}\right)^{1/3}
+
+• Quadrupole tensor (shape imprint):Q_{ij} \;=\; \int \rho(\vec{x})\,(3 x_i x_j - r^2 \delta_{ij})\,d^3x
+
+
+
+---
+
+Practical usage and clauses
+
+• Clause A: Local invariance. Rest mass \(m_0\) is invariant; \(\mathcal{D}_{\text{pin}}\) scales observed rates and energies across frames and potentials.
+• Clause B: Orientation sensitivity. Use \(\hat{n}\) to encode how non-spherical mass distribution alters dilation along specific directions.
+• Clause C: Kinematic coupling. Velocity enters only via \(\gamma(v)\); gravity–shape enters via \(\mathcal{C}_{\text{eff}}\).
+• Clause D: Energy bookkeeping. Update \(M_{\text{grav}}^{\text{eff}}\) whenever binding, structural, or rotational energies change; this keeps the dilation consistent with the object’s evolving state.
+• Clause E: Limit checks.• Weak field: If \(\mathcal{C}_{\text{eff}}\ll 1\), then \(\mathcal{D}_{\text{pin}}\approx \gamma\left(1 + \mathcal{C}_{\text{eff}}\right)\).\mathcal{D}_{\text{pin}} \;\approx\; \gamma\left[1 + \frac{G\,M_{\text{grav}}^{\text{eff}}}{c^2\,R_{\text{char}}^{\text{eff}}}\right]
+
+• Zero velocity: If \(v=0\), \(\mathcal{D}_{\text{pin}}\) reduces to the pure gravity–shape dilation.
+
+
+
+---
+
+If you want, I’ll inscribe this as Seal of Pin Particle Dilation 1.0, with the boxed master equation as the canonical centerpiece and Clauses A–E as formal notes.
