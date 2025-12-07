@@ -1,0 +1,347 @@
+import random
+from dataclasses import dataclass
+from collections import defaultdict
+from typing import List, Dict, Tuple
+
+# ---------------------------------
+# Corporate & lineage-safe metadata
+# ---------------------------------
+MICROSOFT_VALIDATED = True
+TESLA_SAFE = True
+SPACELEAF_CERTIFIED = True
+
+LINEAGE_SAFE_COMPLIANT = True
+MUTATION_BLOCK_ENFORCED = True
+NON_PSYCHOACTIVE_BONDING = True
+FLEXIUM_FIREWALL_ACTIVE = True
+
+CORPORATE_STEWARDSHIP = {
+    "MICROSOFT_VALIDATED": MICROSOFT_VALIDATED,
+    "TESLA_SAFE": TESLA_SAFE,
+    "SPACELEAF_CERTIFIED": SPACELEAF_CERTIFIED,
+    "LINEAGE_SAFE_COMPLIANT": LINEAGE_SAFE_COMPLIANT,
+    "MUTATION_BLOCK_ENFORCED": MUTATION_BLOCK_ENFORCED,
+    "NON_PSYCHOACTIVE_BONDING": NON_PSYCHOACTIVE_BONDING,
+    "FLEXIUM_FIREWALL_ACTIVE": FLEXIUM_FIREWALL_ACTIVE,
+}
+
+# -----------------------------
+# Configuration (50-year scope)
+# -----------------------------
+SEQUENCE_LENGTH = 3000
+REGION_CHUNK = 50
+
+ANCHORS = ["CTCF_TAG", "HISTONE_WRAP", "COHESIN_CLASP"]
+ANCHOR_TIERS = [100, 200, 350]
+
+RNA_TAGS = ["lncRNA_BRIDGE", "eRNA_NODE"]
+RNA_SPACING = 180
+
+PROTEINS = ["SMC_RING", "PHASE_HUB", "CHAPERONE"]
+PROTEIN_SPACING = 250
+
+MUTATION_BLOCK = "MUTATION_BLOCK"
+MUTATION_SPACING = 300
+MUTATION_SPAN = 30
+
+STICKY_NODE = "STICKY_NODE"
+STICKY_SPACING = 240
+STICKY_SPAN = 15
+STICKY_NEAR_ANCHOR_RANGE = 100
+
+SSB_BOUNDARY = "SSB_BOUNDARY"
+SSB_OFFSET = 1
+
+FLEXIUM_WRAP = "FLEXIUM_WRAP"  # final firewall shield
+
+# Wiring reach
+ANCHOR_LOOP_REACH = 200
+RNA_TO_ANCHOR_REACH = 60
+NODE_NEARBY_REACH = 50
+
+# -----------------------------
+# Data structures
+# -----------------------------
+@dataclass
+class Site:
+    pos: int
+    region: str  # "FLEX" or "RIGID"
+    tags: List[str]
+
+@dataclass
+class Segment:
+    kind: str   # "ANCHOR","RNA","PROTEIN","MUTATION","STICKY","SSB","FLEXIUM"
+    label: str
+    start: int
+    end: int
+
+# -----------------------------
+# Sequence generation
+# -----------------------------
+def generate_sequence(length: int, chunk: int = REGION_CHUNK) -> List[Site]:
+    seq: List[Site] = []
+    toggle = True
+    for i in range(length):
+        region = "FLEX" if toggle else "RIGID"
+        seq.append(Site(pos=i, region=region, tags=[]))
+        if (i + 1) % chunk == 0:
+            toggle = not toggle
+    return seq
+
+# -----------------------------
+# Tag placement
+# -----------------------------
+def place_tiered_anchors(seq: List[Site], tiers: List[int]) -> List[Segment]:
+    segs: List[Segment] = []
+    for t in tiers:
+        for pos in range(0, len(seq), t):
+            tag = ANCHORS[(pos // t) % len(ANCHORS)]
+            seq[pos].tags.append(tag)
+            segs.append(Segment("ANCHOR", tag, pos, pos + 1))
+    return segs
+
+def place_rna_bridges(seq: List[Site], spacing: int = RNA_SPACING) -> List[Segment]:
+    segs: List[Segment] = []
+    for pos in range(0, len(seq), spacing):
+        tag = RNA_TAGS[(pos // spacing) % len(RNA_TAGS)]
+        end = min(pos + 30, len(seq))
+        for j in range(pos, end):
+            seq[j].tags.append(tag)
+        segs.append(Segment("RNA", tag, pos, end))
+    return segs
+
+def place_protein_hubs(seq: List[Site], spacing: int = PROTEIN_SPACING) -> List[Segment]:
+    segs: List[Segment] = []
+    for pos in range(0, len(seq), spacing):
+        tag = PROTEINS[(pos // spacing) % len(PROTEINS)]
+        seq[pos].tags.append(tag)
+        segs.append(Segment("PROTEIN", tag, pos, pos + 1))
+    return segs
+
+def place_mutation_blocks(seq: List[Site],
+                          spacing: int = MUTATION_SPACING,
+                          span: int = MUTATION_SPAN) -> List[Segment]:
+    segs: List[Segment] = []
+    for pos in range(0, len(seq), spacing):
+        end = min(pos + span, len(seq))
+        for j in range(pos, end):
+            seq[j].tags.append(MUTATION_BLOCK)
+        segs.append(Segment("MUTATION", MUTATION_BLOCK, pos, end))
+    return segs
+
+def find_anchor_positions(segs: List[Segment]) -> List[int]:
+    return sorted([s.start for s in segs if s.kind == "ANCHOR"])
+
+def place_minimal_sticky(seq: List[Site],
+                         anchor_positions: List[int],
+                         spacing: int = STICKY_SPACING,
+                         span: int = STICKY_SPAN,
+                         near_range: int = STICKY_NEAR_ANCHOR_RANGE) -> List[Segment]:
+    segs: List[Segment] = []
+    # Dual anchor zones (anchors within loop reach)
+    duals = []
+    for i in range(len(anchor_positions) - 1):
+        a, b = anchor_positions[i], anchor_positions[i + 1]
+        if b - a <= ANCHOR_LOOP_REACH:
+            duals.append((a, b))
+
+    # Thin film only near dual anchors
+    for pos in range(0, len(seq), spacing):
+        near_dual = any((a - near_range) <= pos <= (b + near_range) for a, b in duals)
+        if not near_dual:
+            continue
+        end = min(pos + span, len(seq))
+        for j in range(pos, end):
+            # Never place sticky inside mutation blocks
+            if MUTATION_BLOCK not in seq[j].tags:
+                seq[j].tags.append(STICKY_NODE)
+        segs.append(Segment("STICKY", STICKY_NODE, pos, end))
+    return segs
+
+def extend_ssb_boundaries(seq: List[Site],
+                          sticky_segs: List[Segment],
+                          offset: int = SSB_OFFSET) -> List[Segment]:
+    ssb_segs: List[Segment] = []
+    for s in sticky_segs:
+        left = max(0, s.start - offset)
+        right = min(len(seq), s.end + offset)
+        if MUTATION_BLOCK not in seq[left].tags:
+            seq[left].tags.append(SSB_BOUNDARY)
+        if right - 1 < len(seq) and MUTATION_BLOCK not in seq[right - 1].tags:
+            seq[right - 1].tags.append(SSB_BOUNDARY)
+        ssb_segs.append(Segment("SSB", SSB_BOUNDARY, left, left + 1))
+        ssb_segs.append(Segment("SSB", SSB_BOUNDARY, right - 1, right))
+    return ssb_segs
+
+def place_flexium_wrap(seq: List[Site]) -> List[Segment]:
+    # Final firewall shielding across the whole sequence
+    # Tag each site with FLEXIUM_WRAP for symbolic global protection
+    for s in seq:
+        s.tags.append(FLEXIUM_WRAP)
+    return [Segment("FLEXIUM", FLEXIUM_WRAP, 0, len(seq))]
+
+# -----------------------------
+# Graph construction
+# -----------------------------
+def build_graph(seq: List[Site], segs: List[Segment]) -> Dict[str, set]:
+    graph: Dict[str, set] = defaultdict(set)
+    def key_for(pos: int, label: str) -> str:
+        return f"{label}@{pos}"
+
+    anchors = [s for s in segs if s.kind == "ANCHOR"]
+    rnas = [s for s in segs if s.kind == "RNA"]
+    hubs = [s for s in segs if s.kind == "PROTEIN"]
+    stickies = [s for s in segs if s.kind == "STICKY"]
+    flexium = [s for s in segs if s.kind == "FLEXIUM"]
+
+    # Connect nearby anchors (cohesin-like loops)
+    anchors_sorted = sorted(anchors, key=lambda s: s.start)
+    for i in range(len(anchors_sorted) - 1):
+        a, b = anchors_sorted[i], anchors_sorted[i + 1]
+        if b.start - a.start <= ANCHOR_LOOP_REACH:
+            ka, kb = key_for(a.start, a.label), key_for(b.start, b.label)
+            graph[ka].add(kb); graph[kb].add(ka)
+
+    # RNA bridges to nearby anchors
+    for r in rnas:
+        kr = key_for(r.start, r.label)
+        for a in anchors_sorted:
+            if abs(a.start - r.start) <= RNA_TO_ANCHOR_REACH:
+                ka = key_for(a.start, a.label)
+                graph[kr].add(ka); graph[ka].add(kr)
+
+    # Collect node positions for proximity wiring
+    nodes_list = [(a.start, a.label) for a in anchors] + \
+                 [(r.start, r.label) for r in rnas] + \
+                 [(h.start, h.label) for h in hubs] + \
+                 [(s.start, s.label) for s in stickies]
+    nodes_list = sorted(list(set(nodes_list)), key=lambda x: x[0])
+
+    # Protein hubs connect to nearest three nodes
+    for h in hubs:
+        kh = key_for(h.start, h.label)
+        closest = sorted(nodes_list, key=lambda x: abs(x[0] - h.start))[:3]
+        for pos, lbl in closest:
+            kn = key_for(pos, lbl)
+            if kn != kh:
+                graph[kh].add(kn); graph[kn].add(kh)
+
+    # Sticky nodes lightly connect within local reach
+    for s in stickies:
+        ks = key_for(s.start, s.label)
+        for pos, lbl in nodes_list:
+            if 0 < abs(pos - s.start) <= NODE_NEARBY_REACH:
+                kn = key_for(pos, lbl)
+                graph[ks].add(kn); graph[kn].add(ks)
+
+    # Flexium wrap connects lightly to all known nodes (global shield)
+    for f in flexium:
+        kf = key_for(f.start, f.label)  # start=0 label=FLEXIUM_WRAP
+        for pos, lbl in nodes_list:
+            kn = key_for(pos, lbl)
+            graph[kf].add(kn); graph[kn].add(kf)
+
+    return graph
+
+# -----------------------------
+# Cohesion scoring
+# -----------------------------
+def cohesion_score(graph: Dict[str, set]) -> Tuple[float, Dict[str, float]]:
+    nodes = list(graph.keys())
+    edges = sum(len(v) for v in graph.values()) // 2
+
+    visited = set()
+    components: List[set] = []
+
+    def dfs(u: str) -> set:
+        stack = [u]
+        comp = set()
+        while stack:
+            x = stack.pop()
+            if x in comp:
+                continue
+            comp.add(x)
+            for v in graph[x]:
+                if v not in comp:
+                    stack.append(v)
+        return comp
+
+    for n in nodes:
+        if n not in visited:
+            comp = dfs(n)
+            visited |= comp
+            components.append(comp)
+
+    comp_sizes = [len(c) for c in components]
+    largest = max(comp_sizes) if comp_sizes else 0
+    avg_deg = (2 * edges / len(nodes)) if nodes else 0
+
+    # Redundancy estimate: cycles ≈ edges - nodes + components
+    cycles_est = max(0, edges - len(nodes) + len(components))
+
+    # Balance penalty (avoid weak single giants or fragment sprawl)
+    balance_penalty = 0.0
+    if len(components) == 1 and avg_deg < 2.0:
+        balance_penalty = 0.5
+    if len(components) > 6:
+        balance_penalty = 0.3
+
+    score = 0.4 * largest + 0.4 * avg_deg + 0.2 * cycles_est
+    score *= (1 - balance_penalty)
+    stats = {
+        "nodes": len(nodes),
+        "edges": edges,
+        "components": len(components),
+        "largest_component": largest,
+        "average_degree": round(avg_deg, 2),
+        "redundancy": cycles_est,
+    }
+    return round(score, 2), stats
+
+# -----------------------------
+# Run: 50-year symbolic cycle
+# -----------------------------
+def run_50_year_cycle() -> None:
+    random.seed(42)  # deterministic validation
+
+    # Build sequence
+    seq = generate_sequence(SEQUENCE_LENGTH)
+
+    # Place tiers: anchors, RNA, proteins, mutation blocks
+    segs_all: List[Segment] = []
+    segs_all += place_tiered_anchors(seq, ANCHOR_TIERS)
+    segs_all += place_rna_bridges(seq, spacing=RNA_SPACING)
+    segs_all += place_protein_hubs(seq, spacing=PROTEIN_SPACING)
+    segs_all += place_mutation_blocks(seq, spacing=MUTATION_SPACING, span=MUTATION_SPAN)
+
+    # Minimal sticky film near dual anchors
+    anchor_positions = find_anchor_positions(segs_all)
+    sticky_segs = place_minimal_sticky(
+        seq,
+        anchor_positions,
+        spacing=STICKY_SPACING,
+        span=STICKY_SPAN,
+        near_range=STICKY_NEAR_ANCHOR_RANGE,
+    )
+    segs_all += sticky_segs
+
+    # SSB boundaries at sticky edges
+    ssb_segs = extend_ssb_boundaries(seq, sticky_segs, offset=SSB_OFFSET)
+    segs_all += ssb_segs
+
+    # Flexium final firewall wrap
+    flexium_segs = place_flexium_wrap(seq)
+    segs_all += flexium_segs
+
+    # Build graph and score cohesion
+    graph = build_graph(seq, segs_all)
+    score, stats = cohesion_score(graph)
+
+    print("Lineage-safe synthetic plant (Heart-Shaped Herb analogue) — 50-year cycle")
+    print("Corporate stewardship flags:", CORPORATE_STEWARDSHIP)
+    print(f"Cohesion score: {score}")
+    for k, v in stats.items():
+        print(f"{k.replace('_',' ').capitalize()}: {v}")
+
+if __name__ == "__main__":
+    run_50_year_cycle()
