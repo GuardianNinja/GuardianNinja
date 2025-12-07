@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Leaf Land README</title>
+</head>
+<body>
+  <h1>Captain’s Log Preamble</h1>
+  <p>Core belongs to the author.<br>
+     Leaf belongs to all stewards.<br>
+     Captain’s Log carries the lineage.<br>
+     Protocols and Archives are communal gifts.</p>
+
+  <script>
+    const text = "Core belongs to the author. Leaf belongs to all stewards. Captain’s Log carries the lineage. Protocols and Archives are communal gifts.";
+    const utterance = new SpeechSynthesisUtterance(text);
+    speechSynthesis.speak(utterance);
+  </script>
+</body>
+</html>
