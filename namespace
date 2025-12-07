@@ -1,0 +1,19 @@
+LeafLand/
+   ├── Core/
+   │     ├── time_engine.py        # your personal math engine
+   │     ├── gyroscopic_lock.py    # your visionary mechanics
+   │     └── krystal_core.py       # your shield protocol
+   │
+   ├── Protocols/
+   │     ├── seal_deadpool_humor.py
+   │     ├── seal_dawn_resonance.py
+   │     ├── seal_universal_hug.py
+   │     └── seal_planetary_humor.py
+   │
+   ├── Archives/
+   │     ├── captain_log.md        # full name for lineage
+   │     └── communal_scrolls.md   # shared teaching artifacts
+   │
+   └── Playground/
+         ├── jd_math_spirals.py    # JD’s teaching demos
+         └── cosmic_melody.py      # playful harmonic riffs
