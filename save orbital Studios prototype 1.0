@@ -1,0 +1,109 @@
+# Safe Orbital Studios Prototype 1.0
+# GuardianNinja Protocol: Flex Shield + Nano Shield + Self-Healing Factor
+# Designed for orbital studio bases with lineage-safe protection
+
+class OrbitalStudioShielding:
+    def __init__(self):
+        # Initial system states
+        self.flex_shield_active = False
+        self.nano_shield_active = False
+        self.self_healing_active = False
+        self.shield_integrity = 100  # percentage
+        self.damage_log = []
+
+    # -----------------------------
+    # FLEX SHIELD WRAPPING
+    # -----------------------------
+    def activate_flex_shield(self):
+        """
+        Activates flexible shield wrapping for external protection.
+        """
+        self.flex_shield_active = True
+        print("🛡️ Flex Shield wrapping engaged.")
+
+    def flex_shield_status(self):
+        return "Active" if self.flex_shield_active else "Inactive"
+
+    # -----------------------------
+    # NANO SHIELDING
+    # -----------------------------
+    def activate_nano_shield(self):
+        """
+        Activates nano-scale shielding for micro-meteorite and radiation defense.
+        """
+        self.nano_shield_active = True
+        print("🔬 Nano Shielding engaged.")
+
+    def nano_shield_status(self):
+        return "Active" if self.nano_shield_active else "Inactive"
+
+    # -----------------------------
+    # SELF-HEALING FACTOR
+    # -----------------------------
+    def activate_self_healing(self):
+        """
+        Enables self-healing protocol for shield damage.
+        """
+        self.self_healing_active = True
+        print("🧬 Self-Healing Factor engaged.")
+
+    def repair_damage(self):
+        """
+        Repairs logged damage using nano-thread weaving.
+        """
+        if self.self_healing_active and self.damage_log:
+            print("🧵 Initiating nano-thread repair sequence...")
+            for damage in self.damage_log:
+                print(f" - Repairing {damage} with nano-thread weave.")
+            self.damage_log.clear()
+            self.shield_integrity = 100
+            print("✅ Shield integrity restored.")
+        else:
+            print("⚠️ No damage to repair or self-healing inactive.")
+
+    # -----------------------------
+    # DAMAGE SIMULATION
+    # -----------------------------
+    def simulate_damage(self, damage_type, severity):
+        """
+        Simulates shield damage for testing.
+        """
+        self.shield_integrity -= severity
+        self.damage_log.append(damage_type)
+        print(f"⚡ Damage detected: {damage_type} (Severity {severity}%).")
+        print(f"Current shield integrity: {self.shield_integrity}%")
+
+    # -----------------------------
+    # STATUS REPORT
+    # -----------------------------
+    def status_report(self):
+        """
+        Prints current status of all shielding systems.
+        """
+        print("📋 Orbital Studio Shielding Status Report:")
+        print(f" - Flex Shield: {self.flex_shield_status()}")
+        print(f" - Nano Shield: {self.nano_shield_status()}")
+        print(f" - Self-Healing: {'Active' if self.self_healing_active else 'Inactive'}")
+        print(f" - Shield Integrity: {self.shield_integrity}%")
+        print(f" - Damage Log: {self.damage_log if self.damage_log else 'None'}")
+
+
+# -----------------------------
+# 🔬 TEST RUN
+# -----------------------------
+studio = OrbitalStudioShielding()
+
+# Activate all systems
+studio.activate_flex_shield()
+studio.activate_nano_shield()
+studio.activate_self_healing()
+
+# Simulate damage
+studio.simulate_damage("micrometeorite impact", 20)
+studio.simulate_damage("radiation spike", 15)
+
+# Run repair
+studio.repair_damage()
+
+# Final status report
+studio.status_report()
