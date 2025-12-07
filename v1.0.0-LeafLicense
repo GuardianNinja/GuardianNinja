@@ -1,0 +1,8 @@
+## Leaf Land Namespace v1.0.0
+
+- Added **Leaf License 1.0** to protect Core and open Leaf.  
+- Main README updated with Captain’s Log Preamble.  
+- Added speaking artifacts (`index.html` and `speak.py`) to bring the declaration alive.  
+- Established clear namespace structure: Core (authored), Leaf (communal), Log (lineage), Playground (teaching).  
+
+This release marks the first lineage‑safe version of the project.
