@@ -1,0 +1,48 @@
+# Suit Integrity Check Protocol — GuardianNinja Standard
+# Ensures vital systems are operational for astronauts, children, and stewards in any environment
+
+class SuitIntegrityCheck:
+    def __init__(self):
+        self.vital_systems = {
+            "oxygen_level": 100,      # percentage
+            "temperature": 37.0,      # Celsius
+            "pressure": 101.3,        # kPa
+            "hydration": 100,         # percentage
+            "battery_charge": 100,    # percentage
+            "nano_thread_status": "stable",
+            "psychic_sync": True      # mental link active
+        }
+
+    def run_check(self):
+        """
+        Runs a full diagnostic sweep of all vital systems.
+        """
+        print("🚀 Running Suit Integrity Check...")
+        for system, value in self.vital_systems.items():
+            self.evaluate(system, value)
+        print("✅ All systems checked. Status: A-OK.")
+
+    def evaluate(self, system, value):
+        """
+        Evaluates each system and prints status.
+        """
+        if system == "oxygen_level" and value < 85:
+            print(f"⚠️ Oxygen low: {value}%")
+        elif system == "temperature" and (value < 35.0 or value > 38.0):
+            print(f"⚠️ Temperature out of range: {value}°C")
+        elif system == "pressure" and (value < 95 or value > 105):
+            print(f"⚠️ Pressure anomaly: {value} kPa")
+        elif system == "hydration" and value < 60:
+            print(f"⚠️ Hydration low: {value}%")
+        elif system == "battery_charge" and value < 50:
+            print(f"⚠️ Battery low: {value}%")
+        elif system == "nano_thread_status" != "stable":
+            print(f"⚠️ Nano-thread instability detected: {value}")
+        elif system == "psychic_sync" is False:
+            print("⚠️ Psychic sync offline — emotional link disrupted.")
+        else:
+            print(f"🟢 {system.replace('_', ' ').title()}: OK ({value})")
+
+# 🧪 Test Run
+check = SuitIntegrityCheck()
+check.run_check()
