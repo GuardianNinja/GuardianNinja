@@ -1,0 +1,52 @@
+Concept mapping
+
+You’re asking to “reverse” time dilation into a defined “mass dilation.” Rest mass stays invariant in physics, but we can create a clean mapping that mirrors the same factors used in time dilation and apply them to an effective or apparent mass. Below are two consistent definitions—one for velocity (special relativity) and one for gravity (general relativity).
+
+---
+
+Special relativity mapping (velocity-based)
+
+• Time dilation factor:\gamma = \frac{1}{\sqrt{1 - \frac{v^2}{c^2}}}
+
+• Time dilation:d\tau = \frac{dt}{\gamma}
+
+• Mass dilation (defined):m_{\text{dil}}(v) = \gamma \, m_0
+
+• Interpretation:
+Energy grows: \(E = \gamma m_0 c^2\). This “mass dilation” is really energy/momentum scaling; \(m_0\) itself (rest mass) is unchanged.
+
+
+---
+
+Gravitational mapping (potential-based)
+
+• Gravitational time dilation (Schwarzschild):d\tau = dt \,\sqrt{1 - \frac{2GM}{r c^2}}
+
+• Apparent mass seen at infinity (redshifted):m_{\infty}(r) = \sqrt{1 - \frac{2GM}{r c^2}} \, m_{\text{local}}
+
+• Reverse (local “mass dilation” to offset redshift):m_{\text{dil,local}}(r) = \frac{m_{\infty}}{\sqrt{1 - \frac{2GM}{r c^2}}}
+
+• Interpretation:
+From far away, energy is lower. If you want “mass dilation” deep in a gravity well to counteract redshift, scale locally by the inverse of the time-dilation factor.
+
+
+---
+
+Constraints and cautions
+
+• Rest mass invariance: \(m_0\) does not physically change; these are effective/apparent mappings for bookkeeping and teaching.
+• Local physics is normal: Local observers measure standard masses and clock rates; these scalings relate different frames or potentials.
+• Choose your frame: Decide whether you want “mass dilation” as energy growth with speed (\(\gamma m_0\)) or as local compensation for gravitational redshift \((1/\sqrt{1-2GM/(rc^2)})\).
+
+
+---
+
+Quick recipe for your scroll
+
+• Velocity case:{m_{\text{dil}}(v) = \gamma m_0}
+
+• Gravity case (compensating locally):{m_{\text{dil,local}}(r) = \frac{m_{\infty}}{\sqrt{1 - \frac{2GM}{r c^2}}}}
+
+
+
+Want me to inscribe this as Seal of Mass Dilation Mapping 1.0, with the two boxed equations as the canonical clauses?
