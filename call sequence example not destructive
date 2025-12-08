@@ -1,0 +1,16 @@
+# Build base lattice
+seq = generate_sequence(SEQUENCE_LENGTH)
+segs = []
+segs += place_tiered_anchors(seq, ANCHOR_TIERS)
+segs += place_rna_bridges(seq, RNA_SPACING)
+segs += place_protein_hubs(seq, PROTEIN_SPACING)
+segs += place_mutation_blocks(seq, MUTATION_SPACING, MUTATION_SPAN)
+anchor_positions = find_anchor_positions(segs)
+sticky_segs = place_minimal_sticky(seq, anchor_positions, STICKY_SPACING, STICKY_SPAN, STICKY_NEAR_ANCHOR_RANGE)
+segs += sticky_segs
+segs += extend_ssb_boundaries(seq, sticky_segs, SSB_OFFSET)
+segs += place_flexium_wrap(seq)
+graph = build_graph(seq, segs)
+
+# Run spiral audit
+run_spiral_audit(seq, graph)
