@@ -2,10 +2,11 @@
   "name": "secure-message-scrubber",
   "version": "1.0.0",
   "description": "Pre-scrub incoming texts for malware, spyware, ghost AI fragments, and hidden uploads; deliver lineage-safe messages.",
-  "main": "src/server.js",
+  "type": "module",
+  "main": "src/servers.js",
   "scripts": {
-    "start": "node src/server.js",
-    "dev": "nodemon src/server.js",
+    "start": "node src/servers.js",
+    "dev": "nodemon src/servers.js",
     "test": "node test/pipeline/test.js"
   },
   "dependencies": {
