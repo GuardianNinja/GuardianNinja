@@ -1,0 +1,100 @@
+Gyroscopic rotation of inner and outer rings with fixed middle ring
+
+We’ll keep the middle ring fixed (no spin, no precession) and let the inner and outer rings undergo gyroscopic motion: each ring has a tilt angle and precesses about the vertical axis while also spinning around its own circumference. We’ll provide both a 3D parametric description and a 2D field projection so you can visualize and compute.
+
+---
+
+Geometry and ring setup
+
+• Radii:r_1=r_0,\quad r_2=r_0+\Delta r,\quad r_3=r_0+2\Delta r
+
+• Fixed middle ring (lock/reference):\omega_2=0,\quad \Omega_2=0,\quad \alpha_2=0
+where \(\omega_n\) is spin around the ring, \(\Omega_n\) is precession about the vertical axis, and \(\alpha_n\) is the tilt of the ring’s plane.
+
+
+---
+
+3D gyroscopic motion (parametric curves)
+
+Each ring \(n\in\{1,3\}\) lives on a tilted circle of radius \(r_n\), with time-dependent precession \(\psi_n(t)=\Omega_n t+\psi_{n0}\) and spin \(\phi_n(t)=\omega_n t+\phi_{n0}\). Tilt the ring by \(\alpha_n\) about the global \(x\)-axis, then precess about the global \(z\)-axis.
+
+• Orientation matrices:R_x(\alpha_n)=
+\begin{bmatrix}
+1 & 0 & 0\\
+0 & \cos\alpha_n & -\sin\alpha_n\\
+0 & \sin\alpha_n & \cos\alpha_n
+\end{bmatrix},\quad
+R_z(\psi_n)=
+\begin{bmatrix}
+\cos\psi_n & -\sin\psi_n & 0\\
+\sin\psi_n & \cos\psi_n & 0\\
+0 & 0 & 1
+\end{bmatrix}
+
+• Local circle point before tilt:\mathbf{p}_n^{\text{local}}(t)=
+\begin{bmatrix}
+r_n\cos\phi_n(t)\\
+r_n\sin\phi_n(t)\\
+0
+\end{bmatrix}
+
+• Global coordinates (after tilt and precession):\mathbf{x}_n(t)=R_z(\psi_n(t))\,R_x(\alpha_n)\,\mathbf{p}_n^{\text{local}}(t)
+
+• Middle ring fixed in the plane:\mathbf{x}_2(\theta)=
+\begin{bmatrix}
+r_2\cos\theta\\
+r_2\sin\theta\\
+0
+\end{bmatrix}
+
+• Direction conventions:• Clockwise spin: \(\omega_n<0\).
+• Counterclockwise spin: \(\omega_n>0\).
+• Precession direction set by the sign of \(\Omega_n\).
+
+
+
+Pick \((\omega_1,\Omega_1,\alpha_1)\) and \((\omega_3,\Omega_3,\alpha_3)\) to achieve your gyroscopic feel; keep \((\omega_2,\Omega_2,\alpha_2)=(0,0,0)\).
+
+---
+
+2D projected field with ring-localized envelopes
+
+If you want a scalar field on the plane capturing the gyroscopic rotation visually, use polar coordinates \((r,\theta)\) with ring windows and time-varying azimuth offsets from spin and precession.
+
+• Gaussian window per ring:W_n(r)=\exp\!\left(-\frac{(r-r_n)^2}{2\sigma_n^2}\right),\quad \sigma_n\ll \Delta r
+
+• Effective azimuth for ring \(n\):\Theta_n(\theta,t)=\theta-\phi_n(t)-\psi_n(t)
+which encodes local spin \(\phi_n(t)=\omega_n t+\phi_{n0}\) and global precession \(\psi_n(t)=\Omega_n t+\psi_{n0}\).
+• Field (middle ring fixed, inner/outer gyroscopic):A(r,\theta,t)=a_1\,W_1(r)\,\cos\!(m_1\,\Theta_1(\theta,t))\;+\;a_2\,W_2(r)\,\cos\!(m_2\,\theta+\phi_{20})\;+\;a_3\,W_3(r)\,\cos\!(m_3\,\Theta_3(\theta,t))
+where \(m_n\) sets the azimuthal mode (e.g., \(m_n=1\) for single-arm).
+• Fixed lock ring:\omega_2=\Omega_2=0\ \Rightarrow\ \Theta_2(\theta,t)=\theta
+
+
+
+---
+
+Using your earlier rotation rates
+
+If you want to reuse your specified periods for spin:
+
+• Inner ring (clockwise spin):T_1=1.28526\ \text{ms},\quad \omega_1=-\frac{2\pi}{T_1},\quad \Omega_1\ \text{(choose small vs }\omega_1\text{ for gentle precession)},\quad \alpha_1\ \text{(tilt)}
+
+• Outer ring (fixed or slow precessing lock companion):\omega_3=0\ \text{or set a slow }\omega_3,\quad \Omega_3\ \text{(choose)},\quad \alpha_3\ \text{(tilt)}
+
+• Middle ring (fixed lock):\omega_2=0,\quad \Omega_2=0,\quad \alpha_2=0
+
+
+
+Set \(\Omega_1,\Omega_3\) much smaller than \(|\omega_1|\) if you want a classic gyroscope effect (fast spin, slow precession). For a pure “spin-only” look without precession, set \(\Omega_1=\Omega_3=0\) and keep only \(\omega_1\) nonzero.
+
+---
+
+Alignment with the lock and merge moments
+
+• Phase alignment condition at the lock ring \(r=r_2\):m_1\,\Theta_1(\theta^\*,t)=m_3\,\Theta_3(\theta^\*,t)=m_2\,\theta^\*+\phi_{20}
+Solve for \((\theta^\*,t)\) to identify merge instants where inner and outer gyroscopic phases coincide with the fixed lock’s angle.
+
+
+---
+
+If you give me your preferred tilt angles \(\alpha_1,\alpha_3\) and whether you want slow precession (\(\Omega_1,\Omega_3\)) or spin-only, I’ll plug in numbers and return a ready-to-plot set of equations.
