@@ -1,0 +1,194 @@
+# -----------------------------
+# Spiral audit utilities
+# -----------------------------
+def node_position(key: str) -> int:
+    # Keys look like LABEL@pos; extra hubs use LABEL@extraX
+    parts = key.split("@")
+    try:
+        return int(parts[1])
+    except ValueError:
+        # Treat "extra" hubs as large positive positions to keep them in the spiral tail
+        return 10_000 + int(parts[1].replace("extra", ""))
+
+def classify_kind(key: str) -> str:
+    lbl = key.split("@")[0]
+    if lbl in ("CTCF_TAG", "HISTONE_WRAP", "COHESIN_CLASP"): return "ANCHOR"
+    if lbl in ("SMC_RING", "PHASE_HUB", "CHAPERONE"):        return "HUB"
+    if lbl in ("lncRNA_BRIDGE", "eRNA_NODE"):                 return "RNA"
+    if lbl == "STICKY_NODE":                                  return "STICKY"
+    if lbl == "SSB_BOUNDARY":                                 return "SSB"
+    if lbl == "FLEXIUM_WRAP":                                 return "FLEXIUM"
+    return "OTHER"
+
+def spiral_order(nodes: List[str]) -> List[str]:
+    # Outside-in: interleave head/tail to mimic a spiral sweep
+    sorted_nodes = sorted(nodes, key=node_position)
+    spiral = []
+    i, j = 0, len(sorted_nodes) - 1
+    toggle = True
+    while i <= j:
+        if toggle:
+            spiral.append(sorted_nodes[i]); i += 1
+        else:
+            spiral.append(sorted_nodes[j]); j -= 1
+        toggle = not toggle
+    return spiral
+
+def reverse_spiral_order(nodes: List[str]) -> List[str]:
+    return list(reversed(spiral_order(nodes)))
+
+def audit_coverage(graph: Dict[str, set]) -> Dict[str, int]:
+    counts = {"ANCHOR":0,"HUB":0,"RNA":0,"STICKY":0,"SSB":0,"FLEXIUM":0,"OTHER":0}
+    for n in graph.keys():
+        counts[classify_kind(n)] += 1
+    return counts
+
+def audit_boundaries(graph: Dict[str, set]) -> Dict[str, List[str]]:
+    issues = {"sticky_without_ssb": [], "ssb_orphan": [], "unsealed_edge_nodes": []}
+    # Sticky should touch two SSBs (left/right braces)
+    for n in graph.keys():
+        if classify_kind(n) == "STICKY":
+            ssb_neighbors = [x for x in graph[n] if classify_kind(x) == "SSB"]
+            if len(ssb_neighbors) < 2:
+                issues["sticky_without_ssb"].append(n)
+    # SSB should brace at least one sticky
+    for n in graph.keys():
+        if classify_kind(n) == "SSB":
+            sticky_neighbors = [x for x in graph[n] if classify_kind(x) == "STICKY"]
+            if len(sticky_neighbors) == 0:
+                issues["ssb_orphan"].append(n)
+    # Edge nodes (STICKY/SSB) should have degree >= 2
+    for n in graph.keys():
+        if classify_kind(n) in ("STICKY","SSB") and len(graph[n]) < 2:
+            issues["unsealed_edge_nodes"].append(n)
+    return issues
+
+def audit_quarantine(seq: List[Site], graph: Dict[str, set]) -> Dict[str, List[int]]:
+    # Find mutation span positions
+    mut_positions = set(i.pos for i in seq if MUTATION_BLOCK in i.tags)
+    tag_violations = {"sticky_in_mutation": [], "ssb_in_mutation": [], "rna_cross_quarantine": []}
+    # Map node keys to positions
+    key_pos = {}
+    for n in graph.keys():
+        p = node_position(n)
+        key_pos[n] = p
+
+    for n, p in key_pos.items():
+        if p in mut_positions:
+            kind = classify_kind(n)
+            if kind == "STICKY":
+                tag_violations["sticky_in_mutation"].append(p)
+            if kind == "SSB":
+                tag_violations["ssb_in_mutation"].append(p)
+
+    # RNA should not create bridges across quarantined gaps:
+    # if RNA connects to anchors that lie on opposite sides of a large mutation span
+    mutation_ranges = []
+    # Build contiguous ranges for mutation spans
+    in_span = False; start = None
+    for i in range(SEQUENCE_LENGTH):
+        if i in mut_positions and not in_span:
+            in_span = True; start = i
+        if i not in mut_positions and in_span:
+            mutation_ranges.append((start, i-1)); in_span = False
+    if in_span: mutation_ranges.append((start, SEQUENCE_LENGTH-1))
+
+    def is_separated_by_mutation(a_pos: int, b_pos: int) -> bool:
+        lo, hi = sorted((a_pos, b_pos))
+        for s, e in mutation_ranges:
+            if s <= lo and hi <= e:  # both inside a single mutation range
+                return False
+            if lo < s < hi or lo < e < hi:  # a span lies strictly between them
+                return True
+        return False
+
+    for n in graph.keys():
+        if classify_kind(n) == "RNA":
+            for neigh in graph[n]:
+                if classify_kind(neigh) == "ANCHOR":
+                    a_pos = key_pos[neigh]; r_pos = key_pos[n]
+                    # Scan RNA's other anchor neighbors to see if it bridges across
+                    for neigh2 in graph[n]:
+                        if neigh2 == neigh: continue
+                        if classify_kind(neigh2) == "ANCHOR":
+                            b_pos = key_pos[neigh2]
+                            if is_separated_by_mutation(a_pos, b_pos):
+                                tag_violations["rna_cross_quarantine"].append(r_pos)
+                                break
+    return tag_violations
+
+def audit_orphans_and_weak(graph: Dict[str, set]) -> Dict[str, List[str]]:
+    issues = {"orphans": [], "weak_degree": []}
+    for n in graph.keys():
+        d = len(graph[n])
+        if d == 0:
+            issues["orphans"].append(n)
+        elif d == 1 and classify_kind(n) not in ("FLEXIUM",):
+            issues["weak_degree"].append(n)
+    return issues
+
+def audit_flexium_tieins(graph: Dict[str, set]) -> Dict[str, List[str]]:
+    # Flexium should touch all classes
+    classes = {"ANCHOR": False, "HUB": False, "RNA": False, "STICKY": False, "SSB": False}
+    flex_nodes = [n for n in graph.keys() if classify_kind(n) == "FLEXIUM"]
+    tie_gaps = {"missing_classes": []}
+    if flex_nodes:
+        f = flex_nodes[0]
+        for neigh in graph[f]:
+            k = classify_kind(neigh)
+            if k in classes: classes[k] = True
+        for k, ok in classes.items():
+            if not ok: tie_gaps["missing_classes"].append(k)
+    return tie_gaps
+
+def run_spiral_audit(seq: List[Site], graph: Dict[str, set]) -> None:
+    nodes = list(graph.keys())
+    fwd = spiral_order(nodes)
+    rev = reverse_spiral_order(nodes)
+
+    # Symmetry sanity: first/last classes should mirror across traversal
+    head_class = classify_kind(fwd[0]) if fwd else "NONE"
+    tail_class = classify_kind(fwd[-1]) if fwd else "NONE"
+    rev_head_class = classify_kind(rev[0]) if rev else "NONE"
+    rev_tail_class = classify_kind(rev[-1]) if rev else "NONE"
+
+    counts = audit_coverage(graph)
+    boundary_issues = audit_boundaries(graph)
+    quarantine_issues = audit_quarantine(seq, graph)
+    weak_issues = audit_orphans_and_weak(graph)
+    flex_gaps = audit_flexium_tieins(graph)
+
+    print("\n--- Spiral Audit Summary ---")
+    print(f"Traversal classes: forward head={head_class}, forward tail={tail_class}, "
+          f"reverse head={rev_head_class}, reverse tail={rev_tail_class}")
+    print("Coverage counts:", counts)
+    print("Boundary issues:", {k: len(v) for k, v in boundary_issues.items()})
+    print("Quarantine issues:", {k: len(v) for k, v in quarantine_issues.items()})
+    print("Weakness issues:", {k: len(v) for k, v in weak_issues.items()})
+    print("Flexium tie-in gaps:", flex_gaps)
+
+    # Actionable suggestions
+    suggestions = []
+    if boundary_issues["sticky_without_ssb"]:
+        suggestions.append("Add SSB braces to all sticky segments with <2 SSB neighbors.")
+    if boundary_issues["ssb_orphan"]:
+        suggestions.append("Route each orphan SSB to a nearby STICKY node or remove orphaned SSB.")
+    if boundary_issues["unsealed_edge_nodes"]:
+        suggestions.append("Increase edge passivation or add hub connections to raise boundary degree ≥2.")
+    if quarantine_issues["sticky_in_mutation"] or quarantine_issues["ssb_in_mutation"]:
+        suggestions.append("Purge STICKY/SSB tags found inside mutation spans; re-place just outside ranges.")
+    if quarantine_issues["rna_cross_quarantine"]:
+        suggestions.append("Rewire RNA bridges to avoid spanning across mutation ranges.")
+    if weak_issues["orphans"]:
+        suggestions.append("Connect orphan nodes to nearest two anchors or a hub.")
+    if weak_issues["weak_degree"]:
+        suggestions.append("Raise weak-degree nodes by adding local cycles/hub ties.")
+    if flex_gaps["missing_classes"]:
+        suggestions.append("Ensure Flexium connects to missing classes: " + ",".join(flex_gaps["missing_classes"]))
+
+    if suggestions:
+        print("\nRemediation suggestions:")
+        for s in suggestions:
+            print("-", s)
+    else:
+        print("\nNo critical spiral issues detected.")
