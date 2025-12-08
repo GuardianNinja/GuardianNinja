@@ -1,0 +1,65 @@
+Spiral wave model for concentric energy rings
+
+Here’s a clean, adaptable way to encode “energy spiraling in a circle pattern” with separate frequencies per ring. We’ll work in polar coordinates \((r,\theta)\) and time \(t\), and build a field as a sum of ring-localized spiral waves.
+
+---
+
+Ring layout
+
+• Ring centers:r_n = r_0 + n \cdot \Delta r,\quad n=0,1,2,\ldots,N-1
+
+• Ring widths (envelope):\sigma_n \text{ controls thickness; typically } \sigma_n \ll \Delta r
+
+• Window function (Gaussian ring):W_n(r) = \exp\!\left( -\frac{(r - r_n)^2}{2\sigma_n^2} \right)
+
+
+
+---
+
+Spiral phase and frequency per ring
+
+• Azimuthal mode (number of spiral arms):m_n \in \mathbb{Z}_{\ge 0}
+
+• Temporal frequency per ring:\omega_n = 2\pi f_n
+
+• Radial wavenumber (optional “tightness” of radial oscillation):k_n \ge 0
+
+• Phase pattern (spiral + radial):\Phi_n(r,\theta,t) = m_n\,\theta + k_n\, (r - r_n) - \omega_n t + \phi_n
+
+
+
+---
+
+Field definitions
+
+• Real-valued field (cosine form):A(r,\theta,t) = \sum_{n=0}^{N-1} W_n(r)\, \Big[\, a_n \cos(\Phi_n(r,\theta,t))\, \Big]
+
+• Complex phasor form (useful for analysis):\tilde{A}(r,\theta,t) = \sum_{n=0}^{N-1} a_n\, W_n(r)\, e^{\,i\,\Phi_n(r,\theta,t)}
+
+• Energy density per ring (time-average for amplitude \(a_n\)):\langle \mathcal{E}_n \rangle \propto \frac{a_n^2}{2}
+
+
+
+---
+
+Common special cases
+
+• Pure concentric standing waves (no spiral):m_n = 0,\quad A(r,\theta,t) = \sum_n a_n\, W_n(r)\, \cos\!(k_n(r-r_n) - \omega_n t + \phi_n)
+
+• Archimedean spiral imprint (fixed pitch \(b\)):\text{Impose } r \approx r_n + b\,\theta \;\Rightarrow\; \Phi_n = \theta\left(m_n + k_n b\right) - \omega_n t + \phi_n
+
+• Uniform rings, distinct frequencies:r_n = r_0 + n\Delta r,\;\sigma_n=\sigma,\; m_n=m,\; k_n=k,\; \omega_n \text{ varies by } n
+
+
+
+---
+
+How to match your drawing
+
+• Label: Ring spacingChoose \(\Delta r\) to match the visual spacing; pick \(\sigma\) slightly smaller than \(\Delta r/2\) so rings don’t blur.
+• Label: Spiral feelIf you want visible twist, set \(m\ge 1\). For a gentle swirl, use \(m=1\) and small \(k\). For pure circles, use \(m=0\).
+• Label: Frequency per ringMap inner-to-outer rings to \(f_n\) (e.g., \(f_n = f_0 + n\,\Delta f\) or \(f_n = f_0\,\alpha^n\)). This sets how fast each ring “spins” over time.
+• Label: Amplitude and phaseUse \(a_n\) to emphasize certain rings; \(\phi_n\) to align patterns aesthetically.
+
+
+If you share how many rings you want, their exact spacing, and whether you prefer gentle swirl or pure circles, I’ll plug in numbers and give you a finalized equation set.
