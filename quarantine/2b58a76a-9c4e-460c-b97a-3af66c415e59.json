@@ -1,0 +1,29 @@
+{
+  "id": "2b58a76a-9c4e-460c-b97a-3af66c415e59",
+  "reason": "security_violation",
+  "details": {
+    "urlFlags": [
+      "https://grabify.link/abc",
+      "https://grabify.link/abc"
+    ],
+    "malware": {
+      "hasCodeInject": false,
+      "hasSuspicious": false
+    },
+    "upload": {
+      "hasUploadHint": false,
+      "hasDataUrl": false
+    }
+  },
+  "at": 1765224261151,
+  "payload": {
+    "id": "6",
+    "from": "mallory",
+    "to": "bob",
+    "timestamp": 1765224261151,
+    "body": "Check this out: https://grabify.link/abc",
+    "urls": [
+      "https://grabify.link/abc"
+    ]
+  }
+}

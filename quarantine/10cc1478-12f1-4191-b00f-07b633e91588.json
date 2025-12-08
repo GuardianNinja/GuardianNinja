@@ -1,0 +1,24 @@
+{
+  "id": "10cc1478-12f1-4191-b00f-07b633e91588",
+  "reason": "security_violation",
+  "details": {
+    "urlFlags": [],
+    "malware": {
+      "hasCodeInject": true,
+      "hasSuspicious": false
+    },
+    "upload": {
+      "hasUploadHint": true,
+      "hasDataUrl": true
+    }
+  },
+  "at": 1765224261151,
+  "payload": {
+    "id": "4",
+    "from": "mallory",
+    "to": "bob",
+    "timestamp": 1765224261151,
+    "body": "Here is a file: data:application/octet-stream;base64,QUJDRA==",
+    "urls": []
+  }
+}

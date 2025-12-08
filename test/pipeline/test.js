@@ -1,4 +1,4 @@
-import { scrubMessage } from '../src/pipeline/index.js';
+import { scrubMessage } from '../../src/pipeline/index.js';
 
 function t(name, payload) {
   const r = scrubMessage(payload);
