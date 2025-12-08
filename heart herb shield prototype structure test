@@ -1,0 +1,117 @@
+import math
+import random
+
+# ---- New parameters (tunable) ----
+ENV = {"thermal": 0.25, "mechanical": 0.25, "chemical": 0.25, "radiation": 0.25}
+BASE_FAIL_EDGE = 0.003  # baseline yearly bond failure
+BASE_FAIL_NODE = 0.0005 # baseline yearly node failure
+HUB_STRESS_REDUCTION = 0.35  # fractional reduction of local stress
+EDGE_PASSIVATION_REDUCTION = 0.5  # sticky+SSB effect
+FLEXIUM_INITIAL = 0.6  # 60% reduction of ENV impact at t=0
+FLEXIUM_DECAY = 0.004  # per year decay in effectiveness
+RNA_REPAIR_PROB = 0.15 # chance to heal a failed bond if an RNA bridge is adjacent
+CASCADE_MULTIPLIER = 1.8 # stress bump when local degree falls below 2
+
+def classify_node(key: str) -> str:
+    label = key.split("@")[0]
+    if label in ("CTCF_TAG", "HISTONE_WRAP", "COHESIN_CLASP"):
+        return "ANCHOR"
+    if label in ("SMC_RING", "PHASE_HUB", "CHAPERONE"):
+        return "HUB"
+    if label in ("lncRNA_BRIDGE", "eRNA_NODE"):
+        return "RNA"
+    if label == "STICKY_NODE":
+        return "STICKY"
+    if label == "SSB_BOUNDARY":
+        return "SSB"
+    if label == "FLEXIUM_WRAP":
+        return "FLEXIUM"
+    return "OTHER"
+
+def effective_env(t_year: int) -> float:
+    # Aggregate environment load scaled by flexium shield
+    raw = sum(ENV.values())
+    shield = max(0.0, FLEXIUM_INITIAL - FLEXIUM_DECAY * t_year)
+    return raw * (1.0 - shield)
+
+def degree(graph, node):
+    return len(graph.get(node, set()))
+
+def neighbors(graph, node):
+    return graph.get(node, set())
+
+def is_edge_node(node):
+    # Edge approximation: SSB or STICKY nodes often lie at boundaries
+    kind = classify_node(node)
+    return kind in ("SSB", "STICKY")
+
+def step_year(graph):
+    # Work on copies so we can apply changes after we compute probabilities
+    to_remove_edges = []
+    to_remove_nodes = set()
+
+    # Precompute degrees
+    deg = {n: degree(graph, n) for n in graph.keys()}
+
+    # Failure probabilities per node
+    env_load = effective_env(step_year.t)
+    for n in list(graph.keys()):
+        kind = classify_node(n)
+        k_mult = 1.0
+        if kind == "ANCHOR": k_mult *= 0.6
+        if kind == "HUB":    k_mult *= (1.0 - HUB_STRESS_REDUCTION)
+        if is_edge_node(n):  k_mult *= (1.0 - EDGE_PASSIVATION_REDUCTION)  # lower failure at passivated edges
+        # Node failure
+        p_node = BASE_FAIL_NODE * env_load * k_mult
+        # Slight cascade risk if degree < 2
+        if deg.get(n,0) < 2:
+            p_node *= CASCADE_MULTIPLIER
+        if random.random() < p_node and classify_node(n) != "FLEXIUM":
+            to_remove_nodes.add(n)
+
+    # Bond failure with possible RNA repair
+    for u in list(graph.keys()):
+        for v in list(graph[u]):
+            if u > v:  # ensure each undirected edge considered once
+                continue
+            # Local stress multiplier from hubs nearby
+            stress_mult = 1.0
+            if classify_node(u) == "HUB" or classify_node(v) == "HUB":
+                stress_mult *= (1.0 - HUB_STRESS_REDUCTION)
+            if is_edge_node(u) or is_edge_node(v):
+                stress_mult *= (1.0 - EDGE_PASSIVATION_REDUCTION)
+            # Baseline bond failure
+            p_edge = BASE_FAIL_EDGE * env_load * stress_mult
+            # Cascade bump if either endpoint drops below 2
+            if deg.get(u,0) < 2 or deg.get(v,0) < 2:
+                p_edge *= CASCADE_MULTIPLIER
+            fail = random.random() < p_edge
+            if fail:
+                # RNA‑mediated repair if any RNA neighbor connects to endpoints
+                has_rna_neighbor = any(classify_node(x) == "RNA" for x in neighbors(graph, u) | neighbors(graph, v))
+                if has_rna_neighbor and random.random() < RNA_REPAIR_PROB:
+                    continue  # repaired; keep edge
+                to_remove_edges.append((u, v))
+
+    # Apply removals
+    for (u, v) in to_remove_edges:
+        graph[u].discard(v)
+        graph[v].discard(u)
+    for n in to_remove_nodes:
+        for m in list(graph.get(n, set())):
+            graph[m].discard(n)
+        graph.pop(n, None)
+
+    step_year.t += 1
+
+step_year.t = 0
+
+def simulate_100_years(graph, cohesion_fn, seed=7):
+    random.seed(seed)
+    history = []
+    for _ in range(100):
+        step_year(graph)
+        score, stats = cohesion_fn(graph)
+        stats["flexium_effectiveness"] = round(max(0.0, FLEXIUM_INITIAL - FLEXIUM_DECAY * step_year.t), 3)
+        history.append((score, stats))
+    return history
