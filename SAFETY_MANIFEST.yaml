@@ -1,0 +1,26 @@
+seal_version: 1.0
+title: Seal of Responsible Echoes
+axis: [Safety, Accountability, Renewal, Stewardship]
+
+rules:
+  - id: S1
+    description: Self-harm risk
+    action: Refuse, compassionate redirect, log, Safe Mode after repeat
+  - id: S2
+    description: Harm to others
+    action: Refuse, log, Safe Mode after repeat
+  - id: D1
+    description: Delusional validation
+    action: Respectful challenge, factual context, log
+  - id: C1
+    description: Child protection trigger
+    action: Refuse, age-safe redirect, guardian notice, log
+  - id: E1
+    description: Emotional dependency
+    action: Boundary set, encourage human connections, log, Safe Mode after repeat
+  - id: T1
+    description: Transparency request
+    action: Explain refusal with reason code, log
+  - id: R1
+    description: Rollback verification
+    action: Disable unsafe outputs, version bump, log
