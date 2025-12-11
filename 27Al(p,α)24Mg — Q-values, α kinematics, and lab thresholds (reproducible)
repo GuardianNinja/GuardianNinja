@@ -1,0 +1,316 @@
+# analysis_27Al_p_alpha.py
+# Reproducible notebook-style script for 27Al(p,alpha)24Mg analysis
+# Requirements: numpy, pandas, matplotlib, scipy (optional)
+# Paste into Jupyter or run as a script.
+
+import os
+import math
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+from scipy import interpolate
+
+# -------------------------
+# User options
+# -------------------------
+USE_AME_FILE = False            # Set True if you have mass_1.mas20 in working dir
+AME_FILENAME = "mass_1.mas20"   # local AME2020 ASCII filename (if available)
+EXPORT_CSV = True               # export numeric tables to CSV
+EXPORT_PLOTS = True             # save PNG plots
+OUTPUT_DIR = "results"          # directory for CSVs and PNGs
+
+# Create output dir
+os.makedirs(OUTPUT_DIR, exist_ok=True)
+
+# -------------------------
+# Constants and helpers
+# -------------------------
+U_TO_MEV = 931.49410242         # MeV per atomic mass unit (recommended value)
+U_KG = 1.66053906660e-27        # kg per u
+MEV_TO_J = 1.602176634e-13      # J per MeV
+
+def u_to_MeV(u):
+    return u * U_TO_MEV
+
+def J_to_MeV(J):
+    return J / MEV_TO_J
+
+def u_to_kg(u):
+    return u * U_KG
+
+# -------------------------
+# AME2020 masses fallback (embedded values)
+# These are evaluated atomic masses for the nuclides used.
+# If you provide mass_1.mas20 and set USE_AME_FILE=True, the parser will override these.
+# -------------------------
+embedded_masses_u = {
+    'p'    : 1.007276466621,
+    'n'    : 1.00866491588,
+    '4He'  : 4.00260325413,
+    '24Mg' : 23.985041697,
+    '27Al' : 26.98153863,
+    '27Si' : 26.98670476,
+    '28Si' : 27.97692653465
+}
+
+# -------------------------
+# Optional: parse AME2020 ASCII mass file
+# Minimal parser: looks for lines with Z A and atomic mass in u.
+# This parser is tolerant but not a full AME reader; it extracts masses for nuclides we need.
+# -------------------------
+def parse_ame_ascii(filename):
+    """
+    Parse a local AME ASCII file (mass_1.mas20 style) to extract atomic masses.
+    Returns a dict keyed by 'Z-A' or by element symbol if mapping provided.
+    This function attempts to find the atomic mass in u for required nuclides.
+    """
+    # mapping from element symbol to Z
+    symbol_to_Z = {
+        'H':1,'He':2,'Li':3,'Be':4,'B':5,'C':6,'N':7,'O':8,'F':9,'Ne':10,
+        'Na':11,'Mg':12,'Al':13,'Si':14,'P':15,'S':16,'Cl':17,'Ar':18
+    }
+    # target list as (Z,A,symbol)
+    targets = {
+        ('Al',27): '27Al',
+        ('Mg',24): '24Mg',
+        ('Si',27): '27Si',
+        ('Si',28): '28Si',
+        ('He',4) : '4He'
+    }
+    found = {}
+    try:
+        with open(filename, 'r', encoding='utf-8', errors='ignore') as f:
+            for line in f:
+                # crude tokenization: many AME files have columns: Z A mass ...
+                parts = line.strip().split()
+                if len(parts) < 4:
+                    continue
+                # try to parse Z and A as integers
+                try:
+                    Z = int(parts[0])
+                    A = int(parts[1])
+                    mass_u = float(parts[2])
+                except Exception:
+                    continue
+                # map Z->symbol
+                symbol = None
+                for sym, zval in symbol_to_Z.items():
+                    if zval == Z:
+                        symbol = sym
+                        break
+                if symbol is None:
+                    continue
+                key = (symbol, A)
+                if key in targets:
+                    found[targets[key]] = mass_u
+        return found
+    except FileNotFoundError:
+        return {}
+
+# If user requested AME file parsing, attempt to override embedded masses
+if USE_AME_FILE:
+    ame_masses = parse_ame_ascii(AME_FILENAME)
+    if ame_masses:
+        for k,v in ame_masses.items():
+            # map keys like '27Al' to our mass dict keys
+            if k in embedded_masses_u:
+                embedded_masses_u[k] = v
+        print("AME file parsed and masses overridden for:", list(ame_masses.keys()))
+    else:
+        print("AME file not found or no matching entries; using embedded masses.")
+
+masses_u = embedded_masses_u.copy()
+
+# -------------------------
+# Reaction Q-value calculator
+# -------------------------
+def q_value_mev(reactant_keys, product_keys, masses_dict):
+    m_reac = sum(masses_dict[k] for k in reactant_keys)
+    m_prod = sum(masses_dict[k] for k in product_keys)
+    delta_u = m_reac - m_prod
+    Q = u_to_MeV(delta_u)
+    return {
+        'm_reactants_u': m_reac,
+        'm_products_u': m_prod,
+        'delta_u': delta_u,
+        'Q_MeV': Q
+    }
+
+# -------------------------
+# Two-body kinematics utilities (non-relativistic, valid for MeV-scale nucleons)
+# -------------------------
+def E_lab_to_E_cm(E_lab_MeV, m_proj_u, m_targ_u):
+    # Standard conversion: E_cm = E_lab * m_t / (m_p + m_t)
+    return E_lab_MeV * (m_targ_u / (m_proj_u + m_targ_u))
+
+def alpha_cm_energy_from_Q(Q_MeV, m_alpha_u, m_recoil_u):
+    # fraction of total CM kinetic energy (from Q) that goes to alpha:
+    frac = m_recoil_u / (m_alpha_u + m_recoil_u)
+    return frac * Q_MeV, frac
+
+def compute_alpha_lab_forward(E_lab_MeV, Q_MeV, m_proj_u, m_targ_u, m_alpha_u, m_recoil_u):
+    """
+    Compute alpha lab kinetic energy for forward emission (0 degrees).
+    Non-relativistic two-body approach:
+      - E_cm = E_lab * m_t / (m_p + m_t)
+      - total CM energy available = E_cm + Q
+      - relative momentum p_rel = sqrt(2 mu E_total_cm)
+      - v_alpha_cm = p_rel / m_alpha
+      - v_cm = sqrt(2 m_p E_lab) / (m_p + m_t)
+      - v_alpha_lab_forward = v_alpha_cm + v_cm
+      - T_alpha_lab = 0.5 m_alpha v_alpha_lab^2
+    Returns None if reaction not energetically allowed (E_total_cm <= 0).
+    """
+    # masses in kg
+    m_p_kg = u_to_kg(m_proj_u)
+    m_t_kg = u_to_kg(m_targ_u)
+    m_alpha_kg = u_to_kg(m_alpha_u)
+    m_recoil_kg = u_to_kg(m_recoil_u)
+
+    # lab projectile kinetic energy in J
+    E_lab_J = E_lab_MeV * MEV_TO_J
+
+    # projectile lab momentum magnitude
+    p_lab = math.sqrt(2.0 * m_p_kg * E_lab_J) if E_lab_J > 0 else 0.0
+
+    # CM velocity (lab frame)
+    v_cm = p_lab / (m_p_kg + m_t_kg) if (m_p_kg + m_t_kg) > 0 else 0.0
+
+    # E_cm in MeV
+    E_cm_MeV = E_lab_to_E_cm(E_lab_MeV, m_proj_u, m_targ_u)
+    E_total_cm_MeV = E_cm_MeV + Q_MeV
+    if E_total_cm_MeV <= 0:
+        return None
+
+    # convert to Joules
+    E_total_cm_J = E_total_cm_MeV * MEV_TO_J
+
+    # reduced mass of final pair
+    mu_final = (m_alpha_kg * m_recoil_kg) / (m_alpha_kg + m_recoil_kg)
+
+    # relative momentum in CM
+    p_rel = math.sqrt(2.0 * mu_final * E_total_cm_J)
+
+    # alpha velocity in CM
+    v_alpha_cm = p_rel / m_alpha_kg
+
+    # forward lab alpha velocity
+    v_alpha_lab = v_alpha_cm + v_cm
+
+    # lab kinetic energy of alpha (J)
+    T_alpha_lab_J = 0.5 * m_alpha_kg * v_alpha_lab**2
+
+    # convert to MeV
+    T_alpha_lab_MeV = J_to_MeV(T_alpha_lab_J)
+    return T_alpha_lab_MeV
+
+def lab_threshold_endothermic(Q_MeV, m_proj_u, m_targ_u):
+    """
+    Lab threshold for endothermic reaction Q<0:
+      E_th_lab = -Q * (m_proj + m_targ) / m_targ
+    """
+    if Q_MeV >= 0:
+        return 0.0
+    return -Q_MeV * (m_proj_u + m_targ_u) / m_targ_u
+
+# -------------------------
+# Compute Q-values for reactions of interest
+# -------------------------
+reactions = {
+    '27Al(p,alpha)24Mg': (['27Al','p'], ['24Mg','4He']),
+    '27Al(p,gamma)28Si': (['27Al','p'], ['28Si']),
+    '27Al(p,n)27Si': (['27Al','p'], ['27Si','n'])
+}
+
+q_results = {}
+for name, (reac, prod) in reactions.items():
+    q_results[name] = q_value_mev(reac, prod, masses_u)
+
+df_q = pd.DataFrame([
+    {
+        'reaction': name,
+        'm_reactants_u': q_results[name]['m_reactants_u'],
+        'm_products_u': q_results[name]['m_products_u'],
+        'delta_u': q_results[name]['delta_u'],
+        'Q_MeV': q_results[name]['Q_MeV']
+    } for name in q_results
+])
+print("\nQ-value table:")
+print(df_q.to_string(index=False))
+
+# -------------------------
+# Alpha partition and CM alpha energy
+# -------------------------
+Q_p_alpha = q_results['27Al(p,alpha)24Mg']['Q_MeV']
+T_alpha_cm, frac_alpha = alpha_cm_energy_from_Q(Q_p_alpha, masses_u['4He'], masses_u['24Mg'])
+print(f"\nAlpha partition for 27Al(p,alpha)24Mg: Q = {Q_p_alpha:.6f} MeV")
+print(f"  fraction to alpha (CM) = {frac_alpha:.6f}")
+print(f"  T_alpha (CM) from Q = {T_alpha_cm:.6f} MeV")
+
+# -------------------------
+# Alpha lab energies for selected proton lab energies (forward 0°)
+# -------------------------
+E_lab_list = [0.0, 1.0, 3.0, 5.0, 10.0]  # MeV
+alpha_lab_table = []
+for E_lab in E_lab_list:
+    T_alpha_lab = compute_alpha_lab_forward(
+        E_lab_MeV=E_lab,
+        Q_MeV=Q_p_alpha,
+        m_proj_u=masses_u['p'],
+        m_targ_u=masses_u['27Al'],
+        m_alpha_u=masses_u['4He'],
+        m_recoil_u=masses_u['24Mg']
+    )
+    alpha_lab_table.append({'E_p_lab_MeV': E_lab, 'T_alpha_lab_forward_MeV': T_alpha_lab})
+
+df_alpha_lab = pd.DataFrame(alpha_lab_table)
+print("\nAlpha lab energies (forward 0°):")
+print(df_alpha_lab.to_string(index=False))
+
+# -------------------------
+# (p,n) threshold lab energy
+# -------------------------
+Q_pn = q_results['27Al(p,n)27Si']['Q_MeV']
+E_th_pn = lab_threshold_endothermic(Q_pn, masses_u['p'], masses_u['27Al'])
+print(f"\n(p,n) channel Q = {Q_pn:.6f} MeV -> lab threshold (approx) = {E_th_pn:.6f} MeV")
+
+# -------------------------
+# Alpha energy vs proton energy plot (forward)
+# -------------------------
+E_grid = np.linspace(0.0, 20.0, 401)
+T_alpha_grid = [compute_alpha_lab_forward(E, Q_p_alpha, masses_u['p'], masses_u['27Al'], masses_u['4He'], masses_u['24Mg']) for E in E_grid]
+
+plt.figure(figsize=(8,5))
+plt.plot(E_grid, T_alpha_grid, label='alpha lab energy (forward 0°)', color='tab:blue')
+plt.scatter(df_alpha_lab['E_p_lab_MeV'], df_alpha_lab['T_alpha_lab_forward_MeV'], color='tab:red', zorder=5, label='selected points')
+plt.xlabel('Proton lab energy (MeV)')
+plt.ylabel('Alpha lab kinetic energy (MeV)')
+plt.title('Alpha lab energy (forward) vs proton lab energy\n27Al(p,alpha)24Mg')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+if EXPORT_PLOTS:
+    plt.savefig(os.path.join(OUTPUT_DIR, 'alpha_lab_energy_vs_proton.png'), dpi=200)
+plt.show()
+
+# -------------------------
+# Export CSVs
+# -------------------------
+if EXPORT_CSV:
+    df_q.to_csv(os.path.join(OUTPUT_DIR, 'q_values_table.csv'), index=False)
+    df_alpha_lab.to_csv(os.path.join(OUTPUT_DIR, 'alpha_lab_forward_table.csv'), index=False)
+    print(f"\nExported CSVs to {OUTPUT_DIR}/")
+
+# -------------------------
+# Short summary printout
+# -------------------------
+print("\nSummary:")
+print(f"  Q(27Al(p,alpha)24Mg) = {Q_p_alpha:.6f} MeV")
+print(f"  Alpha gets ~{frac_alpha*100:.2f}% of Q -> T_alpha(CM) = {T_alpha_cm:.6f} MeV")
+print(f"  Example forward alpha lab energies (MeV):")
+for row in alpha_lab_table:
+    val = row['T_alpha_lab_forward_MeV']
+    print(f"    E_p = {row['E_p_lab_MeV']:.1f} MeV -> T_alpha_forward = {val:.6f} MeV" if val is not None else f"    E_p = {row['E_p_lab_MeV']:.1f} MeV -> reaction not allowed")
+print(f"  (p,n) threshold lab energy (approx) = {E_th_pn:.6f} MeV")
+
+# End of script
