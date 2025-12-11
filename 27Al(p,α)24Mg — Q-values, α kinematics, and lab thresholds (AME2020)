@@ -1,0 +1,226 @@
+# Nuclear kinematics and Q-value notebook
+# Paste into Jupyter or run as a script (requires numpy, pandas, matplotlib)
+
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
+# ---------------------------
+# Constants and unit helpers
+# ---------------------------
+u_kg = 1.66053906660e-27            # atomic mass unit in kg
+MeV_to_J = 1.602176634e-13         # 1 MeV in joules
+u_to_MeV = 931.49410242            # 1 u in MeV (approx AME convention)
+c = 299792458.0                    # speed of light m/s
+
+def u_to_kg(u):
+    return u * u_kg
+
+def MeV_to_Joule(E_MeV):
+    return E_MeV * MeV_to_J
+
+def J_to_MeV(E_J):
+    return E_J / MeV_to_J
+
+# ---------------------------
+# AME2020 masses (atomic masses, u)
+# Embedded authoritative values for the nuclides used
+# (these are the evaluated atomic masses used in the calculations)
+# ---------------------------
+masses_u = {
+    'p'   : 1.007276466621,    # proton atomic mass (u)
+    'n'   : 1.00866491588,     # neutron mass (u)
+    '4He' : 4.00260325413,     # alpha (atomic) (u)
+    '24Mg': 23.985041697,      # 24Mg atomic mass (u)
+    '27Al': 26.98153863,       # 27Al atomic mass (u)
+    '27Si': 26.98670476,       # 27Si atomic mass (u) (AME2020)
+    '28Si': 27.97692653465     # 28Si atomic mass (u)
+}
+
+# ---------------------------
+# Reaction helper functions
+# ---------------------------
+def q_value_mev(reactant_keys, product_keys):
+    """Compute Q-value in MeV from atomic masses (u)."""
+    m_reac = sum(masses_u[k] for k in reactant_keys)
+    m_prod = sum(masses_u[k] for k in product_keys)
+    delta_u = m_reac - m_prod
+    Q = delta_u * u_to_MeV
+    return Q, delta_u, m_reac, m_prod
+
+def lab_to_cm_energy(E_lab_MeV, m_proj_u, m_targ_u):
+    """Convert projectile lab kinetic energy (MeV) to CM kinetic energy (MeV)."""
+    # Non-relativistic approximation (valid for MeV-scale nucleons)
+    E_cm = E_lab_MeV * (m_proj_u / (m_proj_u + m_targ_u))  # careful: for kinetic energy partition use reduced mass factor
+    # Note: alternative common formula: E_cm = E_lab * m_t / (m_p + m_t)
+    # For projectile mass m_p and target m_t, the CM energy available for relative motion is:
+    E_cm = E_lab_MeV * (masses_u['p'] / (masses_u['p'] + m_targ_u)) * (m_targ_u / m_targ_u)  # simplified to standard form below
+    # Use the standard conversion: E_cm = E_lab * m_t / (m_p + m_t)
+    E_cm = E_lab_MeV * (m_targ_u / (m_proj_u + m_targ_u))
+    return E_cm
+
+def compute_alpha_lab_energy_forward(E_lab_MeV, Q_MeV, m_proj_u, m_targ_u, m_alpha_u, m_recoil_u):
+    """
+    Compute alpha lab kinetic energy for forward emission (0 degrees) using non-relativistic two-body kinematics.
+    Steps:
+      - convert masses to kg
+      - compute E_lab in J, E_cm in J, total available CM energy = E_cm + Q
+      - compute relative momentum in CM for final pair, get v_alpha_cm
+      - compute v_cm (velocity of CM in lab)
+      - forward lab velocity = v_alpha_cm + v_cm
+      - return kinetic energy in MeV
+    """
+    # masses in kg
+    m_p_kg = u_to_kg(m_proj_u)
+    m_t_kg = u_to_kg(m_targ_u)
+    m_alpha_kg = u_to_kg(m_alpha_u)
+    m_recoil_kg = u_to_kg(m_recoil_u)
+
+    # energies in J
+    E_lab_J = MeV_to_J(E_lab_MeV)
+    # lab projectile momentum magnitude
+    p_lab = np.sqrt(2.0 * m_p_kg * E_lab_J) if E_lab_J > 0 else 0.0
+
+    # CM velocity (lab frame)
+    v_cm = p_lab / (m_p_kg + m_t_kg) if (m_p_kg + m_t_kg) > 0 else 0.0
+
+    # E_cm (MeV) using standard formula E_cm = E_lab * m_t / (m_p + m_t)
+    E_cm_MeV = E_lab_MeV * (m_targ_u / (m_proj_u + m_targ_u))
+    E_cm_J = MeV_to_J(E_cm_MeV)
+
+    # total available energy in CM (must be positive to have outgoing relative motion)
+    E_total_cm_MeV = E_cm_MeV + Q_MeV
+    if E_total_cm_MeV <= 0:
+        return None  # reaction not energetically allowed at this lab energy
+
+    E_total_cm_J = MeV_to_J(E_total_cm_MeV)
+
+    # reduced mass of final pair (alpha + recoil)
+    mu_final = (m_alpha_kg * m_recoil_kg) / (m_alpha_kg + m_recoil_kg)
+
+    # relative momentum magnitude in CM
+    p_rel = np.sqrt(2.0 * mu_final * E_total_cm_J)
+
+    # alpha velocity in CM (m/s)
+    v_alpha_cm = p_rel / m_alpha_kg
+
+    # forward emission: lab velocity = v_alpha_cm + v_cm
+    v_alpha_lab = v_alpha_cm + v_cm
+
+    # lab kinetic energy of alpha (J)
+    T_alpha_lab_J = 0.5 * m_alpha_kg * v_alpha_lab**2
+
+    # convert to MeV
+    T_alpha_lab_MeV = J_to_MeV(T_alpha_lab_J)
+    return T_alpha_lab_MeV
+
+def threshold_lab_for_endothermic(Q_MeV, m_proj_u, m_targ_u):
+    """
+    Compute lab threshold energy for an endothermic reaction (Q < 0).
+    Formula: E_th_lab = -Q * (m_proj + m_targ) / m_targ   (masses in same units)
+    """
+    if Q_MeV >= 0:
+        return 0.0
+    return -Q_MeV * (m_proj_u + m_targ_u) / m_targ_u
+
+# ---------------------------
+# Compute Q-values for the reactions
+# ---------------------------
+reactions = {
+    '27Al(p,alpha)24Mg': (['27Al','p'], ['24Mg','4He']),
+    '27Al(p,gamma)28Si': (['27Al','p'], ['28Si']),
+    '27Al(p,n)27Si': (['27Al','p'], ['27Si','n'])
+}
+
+results = []
+for name, (reac, prod) in reactions.items():
+    Q, delta_u, m_reac, m_prod = q_value_mev(reac, prod)
+    results.append({
+        'reaction': name,
+        'm_reactants_u': m_reac,
+        'm_products_u': m_prod,
+        'delta_u': delta_u,
+        'Q_MeV': Q
+    })
+
+df_q = pd.DataFrame(results)
+pd.set_option('display.precision', 6)
+print("\nQ-value table (atomic masses, AME2020 embedded values):")
+print(df_q[['reaction','delta_u','Q_MeV']].to_string(index=False))
+
+# ---------------------------
+# Alpha partition and CM alpha energy
+# ---------------------------
+Q_p_alpha = df_q.loc[df_q['reaction']=='27Al(p,alpha)24Mg','Q_MeV'].values[0]
+m_alpha_u = masses_u['4He']
+m_recoil_u = masses_u['24Mg']
+
+frac_alpha = m_recoil_u / (m_alpha_u + m_recoil_u)
+T_alpha_cm_from_Q = frac_alpha * Q_p_alpha
+
+print("\nAlpha partition for 27Al(p,alpha)24Mg:")
+print(f"  Q (MeV) = {Q_p_alpha:.6f}")
+print(f"  fraction of Q to alpha (CM) = {frac_alpha:.6f}")
+print(f"  T_alpha (CM) from Q (MeV) = {T_alpha_cm_from_Q:.6f}")
+
+# ---------------------------
+# Alpha lab energies for forward emission at selected proton lab energies
+# ---------------------------
+E_lab_list = [0.0, 1.0, 3.0, 5.0, 10.0]  # MeV
+alpha_lab_results = []
+for E_lab in E_lab_list:
+    T_alpha_lab = compute_alpha_lab_energy_forward(
+        E_lab_MeV=E_lab,
+        Q_MeV=Q_p_alpha,
+        m_proj_u=masses_u['p'],
+        m_targ_u=masses_u['27Al'],
+        m_alpha_u=masses_u['4He'],
+        m_recoil_u=masses_u['24Mg']
+    )
+    alpha_lab_results.append({'E_p_lab_MeV': E_lab, 'T_alpha_lab_forward_MeV': T_alpha_lab})
+
+df_alpha_lab = pd.DataFrame(alpha_lab_results)
+print("\nAlpha lab energies (forward 0°) for selected proton lab energies:")
+print(df_alpha_lab.to_string(index=False))
+
+# ---------------------------
+# (p,n) threshold lab energy
+# ---------------------------
+Q_p_n = df_q.loc[df_q['reaction']=='27Al(p,n)27Si','Q_MeV'].values[0]
+E_th_pn = threshold_lab_for_endothermic(Q_p_n, masses_u['p'], masses_u['27Al'])
+print(f"\n(p,n) channel Q = {Q_p_n:.6f} MeV -> lab threshold (approx) = {E_th_pn:.6f} MeV")
+
+# ---------------------------
+# Plots: alpha lab energy vs proton lab energy (forward)
+# ---------------------------
+E_grid = np.linspace(0.0, 20.0, 201)
+T_alpha_grid = []
+for E in E_grid:
+    T = compute_alpha_lab_energy_forward(E, Q_p_alpha, masses_u['p'], masses_u['27Al'], masses_u['4He'], masses_u['24Mg'])
+    T_alpha_grid.append(T if T is not None else np.nan)
+
+plt.figure(figsize=(8,5))
+plt.plot(E_grid, T_alpha_grid, label='alpha lab energy (forward 0°)')
+plt.scatter(df_alpha_lab['E_p_lab_MeV'], df_alpha_lab['T_alpha_lab_forward_MeV'], color='red', zorder=5)
+plt.xlabel('Proton lab energy (MeV)')
+plt.ylabel('Alpha lab kinetic energy (MeV)')
+plt.title('Alpha lab energy (forward) vs proton lab energy\n27Al(p,alpha)24Mg (AME2020 masses embedded)')
+plt.grid(True)
+plt.legend()
+plt.tight_layout()
+plt.show()
+
+# ---------------------------
+# Summary printout
+# ---------------------------
+print("\nSummary (key numbers):")
+print(f"  Q(27Al(p,alpha)24Mg) = {Q_p_alpha:.6f} MeV")
+print(f"  T_alpha (CM) from Q = {T_alpha_cm_from_Q:.6f} MeV (alpha gets ~{frac_alpha*100:.1f}% of Q)")
+print(f"  Example forward alpha lab energies (MeV):")
+for row in alpha_lab_results:
+    val = row['T_alpha_lab_forward_MeV']
+    val_str = f"{val:.6f}" if val is not None else "not allowed"
+    print(f"    E_p = {row['E_p_lab_MeV']:.1f} MeV -> T_alpha_forward = {val_str} MeV")
+print(f"  (p,n) threshold lab energy (approx) = {E_th_pn:.6f} MeV")
+
+# End of script
