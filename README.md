@@ -3,7 +3,7 @@
 - 🌱 I’m currently learning ...
 - 💞️ I’m looking to collaborate on ...
 - 📫 How to reach me ... CappedCorn7871@outlook.com
-
+So I was just trying to make a kid safe AI and ended up making something new and more. im a kind soul that just wanted to do the right thing for the world.
 <!---
 GuardianNinja/GuardianNinja is a ✨ special ✨ repository because its `README.md` (this file) appears on your GitHub profile.
 You can click the Preview link to take a look at your changes.
