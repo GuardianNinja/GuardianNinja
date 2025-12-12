@@ -1,0 +1,58 @@
+name: "CodeQL Java analysis"
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  analyze:
+    name: Analyze (CodeQL)
+    runs-on: ubuntu-latest
+    # If you want to use a self-hosted runner, change the line above to:
+    # runs-on: [self-hosted, linux, x64]
+    # NOTE: self-hosted runners must have Java and your build tools installed,
+    # and you are responsible for their security and maintenance.
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@v2
+        with:
+          languages: java
+          # If you have a custom queries/config, set config-file: .github/codeql/codeql-config.yml
+
+      # --- Build your project so CodeQL can observe compiler invocations ---
+      # Maven (default)
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Build (Maven) — clean package
+        run: mvn -B -T 1C clean package -DskipTests
+
+      # Gradle alternative (uncomment & remove Maven steps above if you use Gradle)
+      # - name: Set up JDK 17
+      #   uses: actions/setup-java@v4
+      #   with:
+      #     distribution: temurin
+      #     java-version: '17'
+      # - name: Build (Gradle) — assemble
+      #   run: |
+      #     chmod +x ./gradlew
+      #     ./gradlew clean assemble --no-daemon -x test
+
+      # Optional: try auto-build (may detect & run your build automatically)
+      # - name: Autobuild (optional)
+      #   uses: github/codeql-action/autobuild@v2
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@v2
+
+      # Optional: Dependency review to see dependency changes in PRs
+      - name: Dependency review
+        uses: github/dependency-review-action@v3
