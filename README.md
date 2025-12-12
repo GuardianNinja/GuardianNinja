@@ -40,3 +40,8 @@ You can click the Preview link to take a look at your changes.
 ## Status
 - Concept posted for public witnessing
 - Awaiting agency review and orbital proxy testing
+# Scroll of Universal Respect 1.0
+This archive is not just code.  
+It is ceremony, lineage, and stewardship —  
+a gift for children, partners, and future captains.  
+
