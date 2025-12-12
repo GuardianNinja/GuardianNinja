@@ -1,0 +1,26 @@
+use chrono::Utc;
+
+fn main() {
+    loop {
+        let drift_ns = measure_drift_ns();
+        let rotation_rpm = read_rotation_rpm();
+        let accel_g = read_accel_g();
+
+        if drift_ns > cfg().drift_threshold_ns ||
+           rotation_rpm > cfg().rotation_max_rpm ||
+           accel_g > cfg().accel_max_g {
+            log_alarm(drift_ns, rotation_rpm, accel_g);
+            halt_transfer();               // kill-switch: inert state
+            continue;
+        }
+
+        if !verify_live_consent() { continue; }
+        if !mtls_session_ok()      { continue; }
+
+        if let Err(e) = run_transfer() {
+            record_error(e);
+            rollback();
+        }
+        std::thread::sleep(std::time::Duration::from_millis(200));
+    }
+}
