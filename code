@@ -1,0 +1,25 @@
+
+---
+
+### docs/scroll-of-universal-respect.md
+
+```markdown
+# Scroll of Universal Respect 1.0
+
+> Bodies are not buttons. Consent is not optional. Design must embed dignity.
+
+## Teaching
+- Treat any human-shaped form with respect, regardless of whether it is biological, robotic, or representational.
+- Do not simulate intimacy or touch zones traditionally associated with privacy without explicit, revocable consent.
+- Model healthy masculinity through restraint, listening, and boundary awareness.
+- Engineers and designers carry responsibility: interfaces must prevent boundary violations by default.
+
+## Protocol echoes
+- Seal of Boundary Protocol 1.0
+- Seal of Design Responsibility 1.0
+- Seal of Bosom Respect 1.0
+
+## Auditable commitments
+- No “friendly” overrides for consent checks.
+- Clear logs for attempted violations.
+- Configurable zones and contexts with default-deny behavior.
