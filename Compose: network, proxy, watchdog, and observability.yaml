@@ -1,0 +1,47 @@
+version: "3.9"
+services:
+  reverse_proxy:
+    image: nginx:stable
+    volumes:
+      - ./proxy/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./certs:/etc/nginx/certs:ro
+    ports: ["443:443"]
+    depends_on: [watchdog]
+    restart: always
+
+  watchdog:
+    image: ghcr.io/spaceleaf/watchdog:latest
+    environment:
+      - CONSENT_GATE_URL=http://consent:8080/verify
+      - DRIFT_THRESHOLD_NS=10
+      - ROTATION_MAX_RPM=2
+      - ACCEL_MAX_G=0.1
+    volumes:
+      - ./config/watchdog.yaml:/app/config.yaml:ro
+    restart: always
+
+  consent:
+    image: ghcr.io/spaceleaf/consent-gate:latest
+    environment:
+      - ZKP_VERIFIER=groth16
+      - REVOCATION_ENDPOINT=https://ledger/revoke
+    restart: always
+
+  wireguard:
+    image: lscr.io/linuxserver/wireguard
+    cap_add: [NET_ADMIN, SYS_MODULE]
+    volumes:
+      - ./wireguard:/config
+    restart: always
+
+  prometheus:
+    image: prom/prometheus
+    volumes:
+      - ./observability/prometheus.yml:/etc/prometheus/prometheus.yml
+    ports: ["9090:9090"]
+    restart: always
+
+  grafana:
+    image: grafana/grafana
+    ports: ["3000:3000"]
+    restart: always
