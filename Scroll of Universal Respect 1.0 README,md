@@ -1,0 +1,20 @@
+# Scroll of Universal Respect 1.0
+
+Respect is universal, not conditional. Even if technology imitates humanity, boundaries and dignity remain sacred.
+
+## Core principles
+- Consent is sacred.
+- Bodies are not buttons.
+- Design must embed dignity.
+- True strength is restraint and respect.
+
+## What this repo provides
+- A canonical teaching scroll (docs/scroll-of-universal-respect.md).
+- A machine-readable policy (`policy/universal-respect.policy.json`).
+- A lightweight enforcement library (`respect_guard`) to gate interactions and log violations.
+- Tests and CI to keep the protocol lineage-safe over time.
+
+## Quick start
+```bash
+pip install -e .
+python examples/demo.py
