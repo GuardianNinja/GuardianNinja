@@ -1,0 +1,20 @@
+groups:
+- name: transfer_alerts
+  rules:
+  - alert: ClockDriftHigh
+    expr: drift_ns > 10
+    for: 5s
+    labels: { severity: "critical" }
+    annotations: { summary: "Clock drift exceeded threshold" }
+
+  - alert: ConsentMissing
+    expr: consent_ok == 0
+    for: 1s
+    labels: { severity: "critical" }
+    annotations: { summary: "Live consent not verified" }
+
+  - alert: FirewallBypassAttempt
+    expr: nft_drop_counter_increase > 0
+    for: 0s
+    labels: { severity: "high" }
+    annotations: { summary: "Traffic dropped by default-deny policy" }
