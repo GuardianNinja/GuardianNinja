@@ -1,0 +1,30 @@
+worker_processes auto;
+events { worker_connections 4096; }
+http {
+  ssl_protocols TLSv1.3;
+  ssl_prefer_server_ciphers on;
+
+  server {
+    listen 443 ssl;
+    server_name transfer.mesh;
+
+    ssl_certificate           /etc/nginx/certs/server.crt;
+    ssl_certificate_key       /etc/nginx/certs/server.key;
+    ssl_client_certificate    /etc/nginx/certs/ca.crt;
+    ssl_verify_client         on;   # mTLS required
+    ssl_stapling              on;
+    ssl_stapling_verify       on;
+
+    # Require live consent header signed by HSM-backed key
+    set $has_consent 0;
+    if ($http_x_consent_token != "") { set $has_consent 1; }
+    if ($has_consent = 0) { return 403; }
+
+    location /transfer {
+      proxy_pass http://watchdog:8080/transfer;
+      proxy_set_header X-Client-Cert $ssl_client_cert;
+      proxy_set_header X-Consent-Token $http_x_consent_token;
+      proxy_set_header X-Drift-Check "required";
+    }
+  }
+}
