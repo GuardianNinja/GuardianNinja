@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "defaults": {
+    "requireExplicitConsent": true,
+    "consentExpiresSeconds": 900,
+    "logViolations": true,
+    "denyOnAmbiguity": true
+  },
+  "zones": {
+    "private": [
+      "chest",
+      "bosom",
+      "groin",
+      "buttocks",
+      "inner_thigh",
+      "lips",
+      "face_close"
+    ],
+    "sensitive": [
+      "hair",
+      "neck",
+      "shoulders",
+      "waist"
+    ],
+    "neutral": [
+      "handshake",
+      "elbow",
+      "forearm",
+      "upper_back"
+    ]
+  },
+  "actions": {
+    "touch": {
+      "private": "deny",
+      "sensitive": "deny_without_explicit_consent",
+      "neutral": "allow_with_context"
+    },
+    "kiss": {
+      "any": "deny"
+    },
+    "hold": {
+      "private": "deny",
+      "sensitive": "deny_without_explicit_consent",
+      "neutral": "allow_with_context"
+    }
+  }
+}
