@@ -1,0 +1,20 @@
+#!/usr/sbin/nft -f
+
+flush ruleset
+
+table inet filter {
+  chains = {
+    input  = { type filter hook input  priority 0; policy drop; }
+    forward= { type filter hook forward priority 0; policy drop; }
+    output = { type filter hook output priority 0; policy accept; }
+  }
+
+  chain input {
+    ct state established,related accept
+    iif lo accept      # loopback only for control plane
+    tcp dport {443,9090,3000} accept  # proxy + observability
+    udp dport 51820 accept            # wireguard
+    ip protocol icmp limit rate 5/second accept
+    counter drop
+  }
+}
