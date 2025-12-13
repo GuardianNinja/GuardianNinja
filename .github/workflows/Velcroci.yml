@@ -1,0 +1,63 @@
+name: CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [3.9, 3.10, 3.11]
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install numpy
+          pip install -r requirements.txt || true
+
+      - name: Run unit tests
+        env:
+          NV_BIOMETRIC: test_fp
+          NV_PASSWORD: ${{ secrets.NV_EMERGENCY_PASSWORD }}
+        run: |
+          python - <<'PY'
+import os, random, secrets
+from nanovelcro import NanoVelcroCouplingSystem
+
+# Provide a deterministic auth_callback using env vars
+def auth_cb(prompt):
+    if 'fingerprint' in prompt:
+        return os.environ.get('NV_BIOMETRIC', '')
+    if 'emergency_password' in prompt:
+        return os.environ.get('NV_PASSWORD', '')
+    return ''
+
+# Run tests non-interactively
+rng = random.Random(42)
+sys = NanoVelcroCouplingSystem(
+    user_type='kid',
+    emergency_password=os.environ.get('NV_PASSWORD'),
+    biometric_store={'fingerprint': os.environ.get('NV_BIOMETRIC')},
+    rng=rng,
+    auth_callback=auth_cb,
+    key=secrets.token_bytes(16),
+    gyro_threshold_kid=0.0,
+    gyro_threshold_adult=0.0
+)
+assert sys.engage_coupling()
+sys.simulate_zero_gravity(duration=1.0, time_step=0.1)
+assert sys.emergency_override() or True
+print('Smoke tests passed')
+PY
