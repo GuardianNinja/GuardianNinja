@@ -1,0 +1,10 @@
+{
+  "ts": "2025-12-13T11:11:00Z",
+  "node_id": "suit-01",
+  "event": "FAILSAFE",
+  "reason": "sensor_mismatch",
+  "loads": {"left": 12.3, "right": 11.9},
+  "state": "FAILSAFE",
+  "operator_id": "op_42",
+  "signature": "BASE64_SIG"
+}
