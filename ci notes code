@@ -1,0 +1,17 @@
+
+#### Code snippet to add inside `NanoVelcroCouplingSystem` (audited emergency_release)
+```python
+    def emergency_release(self):
+        """
+        Hardware/watchdog style emergency release that forces disengage without interactive auth.
+        This is intended for hardware watchdogs or automated safety systems only.
+        All uses are logged in support_logs for audit.
+        """
+        if not self.engaged:
+            logger.info("No emergency release needed; system not engaged.")
+            return False
+        logger.warning("AUTO EMERGENCY RELEASE invoked by watchdog. Forcing safe disengage.")
+        self.support_logs.append("AUTO EMERGENCY RELEASE ACTIVATED")
+        # Force safe disengage but keep audit trail
+        self._safe_disengage()
+        return True
