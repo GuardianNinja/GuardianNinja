@@ -1,0 +1,4 @@
+cat > demo/trigger.json <<JSON
+{"amount":1000000,"from":"0xdead","to":"0xbeef"}
+JSON
+./demo/run.sh
