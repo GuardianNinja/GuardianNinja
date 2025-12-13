@@ -1,0 +1,7 @@
+# Control plane: allow from controller only
+-A INPUT -s 10.0.0.10 -p tcp --dport 443 -m state --state NEW,ESTABLISHED -j ACCEPT
+-A INPUT -p tcp --dport 443 -j DROP
+
+# Telemetry: allow outbound to collector
+-A OUTPUT -d telemetry.collector.example.com -p tcp --dport 443 -m state --state NEW,ESTABLISHED -j ACCEPT
+-A OUTPUT -j DROP
