@@ -1,4 +1,4 @@
-Jarvondis 3.0 v1.1.0 — Guardian Protocols
+# Jarvondis 3.0 v1.1.0 — Guardian Protocols
 
 - Extended Core Laws with Protection, Transparency, Boundaries, Reciprocity
 - Added child-safe filters and parental safety cues to ResponsePolicy
