@@ -9,25 +9,45 @@ sigma = 5.670374419e-8
 F_view = 0.75             # view factor (space mode orientation)
 A_eff = 0.012             # m^2 effective radiating area
 
+
 # Helper: dynamic internal resistance
-def R_int(T, SOC):
-    return R0 * (1 + a_T * (T - 296.0)) * (1 + a_SOC * (0.5 - SOC)**2)
+def R_int(t_batt: float, SOC: float) -> float:
+    return R0 * (1 + a_T * (t_batt - 296.0)) * (1 + a_SOC * (0.5 - SOC)**2)
 
 # Helper: entropic heat term
-def P_entropic(I, T):
-    return I * T * k_dUdT
+def P_entropic(I: float, t_batt: float) -> float:
+    return I * t_batt * k_dUdT
+
+
+# Define or initialize P_load_throttled and V_nom if not already defined
+P_load_throttled = 0.0  # W, placeholder value (replace with actual value in your loop)
+V_nom = 3.7             # V, nominal voltage (example value)
 
 # In your loop, compute I from throttled power (bounded by BMS limit)
-I = P_load_throttled / max(V_nom, 3.3)   # guard minimum voltage
+I: float = P_load_throttled / max(V_nom, 3.3)   # guard minimum voltage
+
+
+# Ensure t_batt and SOC are defined before use
+t_batt: float = 296.0  # K, initial temperature (example value)
+SOC = 1.0  # State of Charge, initial value (example)
+T_env = 296.0  # K, environment temperature (example value)
 
 # Ohmic and entropic heating
-Rdyn = R_int(T, SOC)
-P_ohmic = (I**2) * Rdyn
-P_ent = P_entropic(I, T)
+Rdyn = R_int(t_batt, SOC)
+P_ohmic = float(float(I)**2 * float(Rdyn))
+P_ent = P_entropic(I, t_batt)
 
 # Radiative cooling (space-aware)
-Prad = epsilon * sigma * F_view * A_eff * (T**4 - T_env**4)
+Prad: float = epsilon * sigma * F_view * A_eff * (t_batt**4 - T_env**4)
+
+# Define P_harv (harvested power) with a placeholder value (replace with actual value as needed)
+P_harv = 0.0  # W, example value for harvested power
+
+# Define C_th (thermal capacitance) with a placeholder value (replace with actual value as needed)
+C_th = 100.0  # J/K, example value for thermal capacitance
 
 # Thermal update with new terms
 dTdt = (P_ohmic + P_ent + P_harv - P_load_throttled - Prad) / C_th
-T = T + dTdt * dt
+# Define dt (time step) with a placeholder value (replace as needed)
+dt = 1.0  # s, example time step
+t_batt = t_batt + dTdt * dt
