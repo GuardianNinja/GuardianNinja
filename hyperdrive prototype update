@@ -1,10 +1,33 @@
+
+# Hyperdrive Proto
+
+A consent-gated resonance travel model. Time collapses only when worlds are ready.
+
+t = ((1-f)*d)/beta
+
+## Core equation
+
+t = ((1 - f) * d) / beta
+
+- d: distance (ly)
+- f: collapse fraction
+- beta: effective speed factor
+
+## Consent gate
+
+Geometric mean readiness with threshold; no readiness, no gate.
+
+## Safety Envelope
+
+Stability envelope enforces phase, shear, jitter; auto-quench protects corridor.
+
+---
+
 Hyperdrive prototype refinement plan
 
 Let’s turn your prototype into a crisp, testable framework with clear interfaces, safety envelopes, and validation paths. Below is a focused plan you can implement in iterative commits without bloating the repo.
 
----
-
-Architecture and modules
+### Architecture and modules
 
 • Core math engine:
 Encapsulate travel time and collapse math with pure functions.• hyperdrive/core/metrics.py
@@ -26,13 +49,9 @@ Hard limits, quench behavior, safe drop to normal space.• hyperdrive/safety/li
 Structured events, jitter budgets, phase slips, readiness changes.• hyperdrive/telemetry/events.py
 • hyperdrive/telemetry/recorders.py
 
-
-
 Sources: Establish a minimal dependency footprint; prefer standard library plus typed models.
 
----
-
-Readiness and stability definitions
+### Readiness and stability definitions
 
 • Readiness function:
 Formalize consent as a composable signal.# hyperdrive/gate/consent.py
@@ -66,32 +85,29 @@ class Stability:
             s.shear <= self.shear_max and
             s.phase_slip <= self.phase_slip_max and
             s.jitter <= self.jitter_max
-        )
-
 @dataclass
+
 class StabilitySample:
     shear: float
     phase_slip: float
     jitter: float
 
-
-
 ---
 
-Core equations and interfaces
+### Core equations and interfaces
 
 • Travel time:
 Single source of truth for mission timing.# hyperdrive/core/metrics.py
 def travel_time_years(distance_ly: float, collapse_fraction: float, beta: float) -> float:
     """
-    t = ((1 - f) * d) / beta
+    t = ((1 - f) *d) / beta
     distance_ly: e.g., 4.24 for Proxima b
     collapse_fraction: 0.0–1.0
     beta: effective speed factor (<=1 conventional, >1 metric shift)
     """
     assert 0.0 <= collapse_fraction < 1.0, "collapse_fraction must be in [0,1)"
     assert beta > 0.0, "beta must be positive"
-    return ((1.0 - collapse_fraction) * distance_ly) / beta
+    return ((1.0 - collapse_fraction)* distance_ly) / beta
 
 • Multi-gate chain:
 Product of residual path segments conditioned by gate openings.# hyperdrive/core/collapse.py
@@ -100,10 +116,10 @@ def chain_time_years(distance_ly: float, collapses: list[float], betas: list[flo
     residual = distance_ly
     total_time = 0.0
     for f, b, open_ in zip(collapses, betas, opens):
-        segment = residual if open_ else residual  # gate opens reduces residual after segment
-        time_segment = ((1.0 - (f if open_ else 0.0)) * segment) / b
+        segment = residual if open_else residual  # gate opens reduces residual after segment
+        time_segment = ((1.0 - (f if open_else 0.0)) *segment) / b
         total_time += time_segment
-        residual = (1.0 - (f if open_ else 0.0)) * residual
+        residual = (1.0 - (f if open_ else 0.0))* residual
     return total_time
 
 • Gate controller:
@@ -111,11 +127,9 @@ Marries readiness and stability; refuses to open if any check fails.# hyperdrive
 def should_open_gate(readiness: Readiness, stability: Stability, sample: StabilitySample, threshold: float = 0.8) -> bool:
     return readiness.is_open(threshold) and stability.within_limits(sample)
 
-
-
 ---
 
-Safety, fail-safes, and telemetry
+### Safety, fail-safes, and telemetry
 
 • Auto-quench logic:
 Neutralize thrust, re-harden bubble, or safe-drop.# hyperdrive/safety/failsafe.py
@@ -147,11 +161,9 @@ class TelemetryEvent:
 def log_event(record: list[TelemetryEvent], evt: TelemetryEvent):
     record.append(evt)
 
-
-
 ---
 
-Testing, validation, and docs
+### Testing, validation, and docs
 
 • Unit tests:• Core math: Travel time, multi-gate chains, edge cases.
 • Consent: Threshold behavior; weak-link scenarios.
@@ -167,28 +179,8 @@ Testing, validation, and docs
 • Safety: Stability envelope, auto-quench.
 • Usage: Minimal code sample; config via JSON/YAML.
 • Roadmap: Validation plan; contributions guideline.
-# Hyperdrive Proto
 
-A consent-gated resonance travel model. Time collapses only when worlds are ready.
-
-## Core equation
-t = ((1 - f) * d) / beta
-
-- d: distance (ly)
-- f: collapse fraction
-- beta: effective speed factor
-
-## Consent gate
-Geometric mean readiness with threshold; no readiness, no gate.
-
-## Safety
-Stability envelope enforces phase, shear, jitter; auto-quench protects corridor.
-
-## Quick start
-
-
-
-
----
-
+t = ((1 - f) *d) / beta
+t = ((1 - f)* d) / beta
+*** End Patch
 If you share the current file layout or a snippet of your proto, I can tailor these modules to your exact structure and push a concise PR plan with commit messages ready to go.
