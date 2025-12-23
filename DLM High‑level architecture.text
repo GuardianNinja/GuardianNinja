@@ -1,0 +1,46 @@
+          ┌────────────────────────────┐
+          │   Continuous Audio Input   │
+          └─────────────┬──────────────┘
+                        │
+     ┌──────────────────▼───────────────────┐
+     │    1. Preprocessing & Segmentation   │
+     │  - Filtering, normalization          │
+     │  - Event detection (click/whistle)   │
+     └──────────────────┬───────────────────┘
+                        │
+       ┌────────────────▼────────────────┐
+       │ 2. Acoustic Feature Extraction  │
+       │  - Spectrograms (mel/log‑mel)   │
+       │  - Temporal stats (ICI, pitch)  │
+       └────────────────┬────────────────┘
+                        │
+  ┌─────────────────────▼─────────────────────┐
+  │ 3. Vocalization Classifier (CNN / CRNN)   │
+  │  - Click / whistle / burst pulse / noise  │
+  │  - Species / individual (optional)        │
+  └─────────────────────┬─────────────────────┘
+                        │
+       ┌────────────────▼──────────────────┐
+       │ 4. Tokenization & Mode Tagging    │
+       │  - Acoustic “tokens” (units)      │
+       │  - Mode labels (excited‑expl.,    │
+       │    excited‑parental, etc.)        │
+       └────────────────┬──────────────────┘
+                        │
+  ┌─────────────────────▼─────────────────────┐
+  │ 5. Language Model (Transformer / RNN LM)  │
+  │  - Learns structure & syntax‑like rules   │
+  │  - Predicts next token and mode           │
+  └─────────────────────┬─────────────────────┘
+                        │
+     ┌──────────────────▼───────────────────┐
+     │ 6. Context & Behavior Head           │
+     │  - Predicts context (hunt, play,     │
+     │    parental guidance, alarm, etc.)   │
+     └──────────────────┬───────────────────┘
+                        │
+            ┌───────────▼───────────┐
+            │ 7. Analysis & “Gloss” │
+            │  - Clusters → meaning │
+            │  - Prototype glosses  │
+            └───────────────────────┘
