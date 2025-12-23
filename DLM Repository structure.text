@@ -1,0 +1,39 @@
+dolphin-language-model/
+├─ README.md
+├─ LICENSE
+├─ requirements.txt
+├─ config/
+│  ├─ training_config.yaml
+│  ├─ model_config.yaml
+│  └─ data_config.yaml
+├─ data/
+│  ├─ raw/            # original audio (not tracked in git)
+│  ├─ processed/      # segmented clips, features
+│  └─ metadata/       # annotations, context labels
+├─ dlm/
+│  ├─ __init__.py
+│  ├─ preprocessing.py
+│  ├─ segmentation.py
+│  ├─ features.py
+│  ├─ classifiers/
+│  │  ├─ __init__.py
+│  │  ├─ cnn_classifier.py
+│  │  └─ crnn_classifier.py
+│  ├─ tokenization.py
+│  ├─ modes.py
+│  ├─ models/
+│  │  ├─ __init__.py
+│  │  ├─ transformer_lm.py
+│  │  └─ rnn_lm.py
+│  ├─ context_head.py
+│  └─ analysis.py
+├─ scripts/
+│  ├─ preprocess_audio.py
+│  ├─ train_classifier.py
+│  ├─ train_lm.py
+│  ├─ evaluate_lm.py
+│  └─ visualize_results.py
+└─ notebooks/
+   ├─ 01_explore_data.ipynb
+   ├─ 02_train_classifier.ipynb
+   └─ 03_language_model_analysis.ipynb
