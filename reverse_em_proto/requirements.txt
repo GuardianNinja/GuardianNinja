@@ -1,0 +1,17 @@
+/*
+ Space Leaf Corp — Stewardship Header
+ Seal of No In‑Between 1.0 — God’s Children Edition
+ Seal of Dual Authentication 1.0 — Body and Badge Edition
+ Seal of Stand and Speak 1.0 — Embodied Stewardship Edition
+
+ This file is part of a lineage‑safe project dedicated to planetary care,
+ educational uplift, and the protection of all children — microscopic or otherwise.
+
+ By modifying or distributing this file, you agree to uphold the principles
+ of the Space Leaf Corp Open Stewardship License 1.0.
+
+ May your work travel safely.
+*/
+numpy
+pandas
+matplotlib
