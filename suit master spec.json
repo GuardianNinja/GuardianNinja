@@ -1,0 +1,151 @@
+{
+  "id": "ST-EVA-OLY-alpha",
+  "role": {
+    "primary": "EVA mobility and radiation-managed operations",
+    "secondary": "Space Olympics competition under controlled but real conditions",
+    "tertiary": "Emergency survival shell with autonomous recovery"
+  },
+  "spine": {
+    "structure": "Central load-bearing rail with power/data bus",
+    "modules": [
+      "WingDock",
+      "DFSCoils",
+      "GARPController",
+      "SSPCanister",
+      "TelemetryHub"
+    ]
+  },
+  "wings": {
+    "common": {
+      "attachment": "Magnetic + mechanical spine rail interface",
+      "actuation": "Segmented ribs with motors and shape-memory alloys",
+      "outerSurface": "Solar + shielding tiles",
+      "innerSurface": "High-visibility, thermal-tuned, team-color capable"
+    },
+    "classes": {
+      "station": {
+        "id": "SC-W1",
+        "role": "Precision EVA, training, obstacle events",
+        "notes": "Compact span, low-mass, high-control authority"
+      },
+      "deepSpace": {
+        "id": "DS-W2",
+        "role": "Long-range EVA, solar glide, Sailboard Mode",
+        "notes": "Extended span, optimized for photon-pressure steering"
+      },
+      "storm": {
+        "id": "ST-W3",
+        "role": "High-radiation and plasma storm survival",
+        "notes": "Heavy shielding, cocoon priority, plasma-reflective skin"
+      }
+    }
+  },
+  "MiDAS": {
+    "name": "Micro-debris Awareness System",
+    "sensors": [
+      "WingEdgeMicroCameras",
+      "WingMicroRadar",
+      "OptionalShortRangeLIDAR"
+    ],
+    "outputs": [
+      "ThreatVectors",
+      "SizeEstimate",
+      "RelativeVelocity",
+      "ImpactProbability",
+      "RecommendedWingPosture"
+    ]
+  },
+  "DFS": {
+    "name": "Deflection Field Subsystem",
+    "hardware": [
+      "SpineEMCoils",
+      "WingEMCoils"
+    ],
+    "inputs": [
+      "MiDASThreatData",
+      "SolarWindIntensity",
+      "LocalPlasmaDensity",
+      "SuitPowerMargin"
+    ],
+    "triggers": [
+      "MicroDebrisFluxSpike",
+      "ChargedParticleThreat",
+      "PlasmaEvent"
+    ],
+    "capabilities": [
+      "BiasSmallChargedParticleTrajectories",
+      "ReduceLocalChargedParticleFlux"
+    ],
+    "limits": [
+      "NoEffectOnLargeNeutralDebris",
+      "ShortDutyCycleOnly",
+      "PotentialEMInterferenceIfMisused"
+    ]
+  },
+  "GARP": {
+    "name": "Guardian Auto-Recovery Protocol",
+    "inputs": [
+      "IMUDriftSpinAccel",
+      "HeartRate",
+      "MotionResponsiveness",
+      "WingState",
+      "SSPState",
+      "TetherState"
+    ],
+    "triggers": [
+      "UncontrolledDriftOrRotation",
+      "LossOfVoluntaryControlPlusAbnormalVitals"
+    ],
+    "actions": [
+      "ReattachWingsIfDetached",
+      "ShiftToStationWingGeometry",
+      "FireMicroThrustersToNullRotation",
+      "RecommendOrAutoDeploySSP",
+      "BroadcastDistressAndTelemetrySnapshot"
+    ]
+  },
+  "SSP": {
+    "name": "Solar Sail Parachute Subsystem",
+    "mount": "Back-mounted canister integrated into spine module",
+    "modes": {
+      "spaceSail": {
+        "role": "Backup thrust, attitude damping, emergency power",
+        "environment": "Vacuum / deep space / cis-lunar"
+      },
+      "dragAssist": {
+        "role": "Descent stabilization and drag assist",
+        "environment": "Thin atmosphere only"
+      }
+    },
+    "triggers": [
+      "ManualCommand",
+      "GARPRecommendation",
+      "AutoDeployWhenWingsOfflineAndTumbleUnsafe"
+    ],
+    "limits": [
+      "NotFullEarthReentryParachute",
+      "LowThrustLongHorizonOnly"
+    ]
+  },
+  "telemetry": {
+    "coreChannels": [
+      "Position",
+      "Velocity",
+      "Orientation",
+      "HeartRate",
+      "OxygenLevel",
+      "SuitPressure",
+      "RadiationLevel",
+      "WingMode",
+      "GARPStatus",
+      "DFSActivity",
+      "MiDASEvents",
+      "SSPState"
+    ],
+    "logging": {
+      "DFS": "DFS_EVENT { time, triggerType, durationMs, peakField, MiDASContext }",
+      "GARP": "GARP_EVENT { time, trigger, actionsTaken }",
+      "SSP": "SSP_EVENT { time, mode, duration, reason }"
+    }
+  }
+}
