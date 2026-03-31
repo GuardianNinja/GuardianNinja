@@ -1,0 +1,6 @@
+      - name: Run smoke test
+        env:
+          NV_BIOMETRIC: test_fp
+          NV_PASSWORD: ${{ secrets.NV_EMERGENCY_PASSWORD }}
+        run: |
+          python scripts/smoke_test.py
