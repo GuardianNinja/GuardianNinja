@@ -1,0 +1,515 @@
+openapi: 3.0.3
+info:
+  title: Shield Tap Lost Artifact Value Recovery API
+  version: 1.0.0
+  description: >
+    API for submitting lost artifact batches, calculating DevCred, and managing DevCred wallets and spends.
+
+servers:
+  - url: https://api.shieldtap.dev/v1
+
+security:
+  - bearerAuth: []
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    ArtifactRecord:
+      type: object
+      required:
+        - artifactId
+        - physicalStatus
+        - digitalStatus
+        - originChannel
+        - classification
+        - evidenceHash
+        - timestamp
+      properties:
+        artifactId:
+          type: string
+        physicalStatus:
+          type: string
+          enum: [intact, damaged, destroyed, missing, unknown]
+        digitalStatus:
+          type: string
+          enum: [valid, corrupted, duplicated, orphaned, unknown]
+        originChannel:
+          type: string
+          enum: [manufacturing, test, customer, logistics, recycling]
+        classification:
+          type: string
+          enum: [LA-1, LA-2, LA-3, LA-4, LA-5]
+        evidenceHash:
+          type: string
+        evidenceLinks:
+          type: array
+          items:
+            type: string
+        timestamp:
+          type: string
+          format: date-time
+        classifier:
+          type: object
+          properties:
+            type:
+              type: string
+              enum: [human, automated]
+            id:
+              type: string
+        notes:
+          type: string
+
+    ArtifactBatch:
+      type: object
+      required:
+        - batchId
+        - partnerId
+        - submittedAt
+        - artifacts
+      properties:
+        batchId:
+          type: string
+        partnerId:
+          type: string
+        submittedAt:
+          type: string
+          format: date-time
+        artifacts:
+          type: array
+          items:
+            $ref: '#/components/schemas/ArtifactRecord'
+        metadata:
+          type: object
+          properties:
+            facilityId:
+              type: string
+            region:
+              type: string
+            submittedBy:
+              type: string
+            version:
+              type: string
+
+    DevCredCalculationResult:
+      type: object
+      properties:
+        batchId:
+          type: string
+        partnerId:
+          type: string
+        baseUnit:
+          type: number
+        weights:
+          type: object
+          properties:
+            material:
+              type: number
+            data:
+              type: number
+            process:
+              type: number
+        auditFactor:
+          type: number
+        artifacts:
+          type: array
+          items:
+            type: object
+            properties:
+              artifactId:
+                type: string
+              classification:
+                type: string
+              scores:
+                type: object
+                properties:
+                  material:
+                    type: number
+                  data:
+                    type: number
+                  process:
+                    type: number
+              rawDevCred:
+                type: number
+              adjustedDevCred:
+                type: number
+        totals:
+          type: object
+          properties:
+            rawDevCred:
+              type: number
+            adjustedDevCred:
+              type: number
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        reason:
+          type: string
+
+    DevCredWallet:
+      type: object
+      properties:
+        partnerId:
+          type: string
+        walletId:
+          type: string
+        balance:
+          type: object
+          properties:
+            total:
+              type: number
+            reserved:
+              type: number
+            available:
+              type: number
+        limits:
+          type: object
+          properties:
+            dailyMintCap:
+              type: number
+            monthlyMintCap:
+              type: number
+        lastUpdated:
+          type: string
+          format: date-time
+
+    DevCredSpendRecord:
+      type: object
+      properties:
+        spendId:
+          type: string
+        partnerId:
+          type: string
+        walletId:
+          type: string
+        amount:
+          type: number
+        purposeId:
+          type: string
+        description:
+          type: string
+        vendorId:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        status:
+          type: string
+          enum: [pending, approved, rejected]
+        audit:
+          type: object
+          properties:
+            required:
+              type: boolean
+            status:
+              type: string
+              enum: [not_started, in_progress, complete]
+            notes:
+              type: string
+
+    Purpose:
+      type: object
+      properties:
+        purposeId:
+          type: string
+        label:
+          type: string
+        description:
+          type: string
+        category:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: object
+          properties:
+            code:
+              type: string
+            message:
+              type: string
+            details:
+              type: object
+            traceId:
+              type: string
+
+paths:
+  /batches:
+    post:
+      summary: Submit artifact batch
+      operationId: submitBatch
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ArtifactBatch'
+      responses:
+        '202':
+          description: Batch received
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                  partnerId:
+                    type: string
+                  status:
+                    type: string
+                    example: received
+                  estimatedReviewTimeSeconds:
+                    type: integer
+        '400':
+          description: Invalid batch
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /batches/{batchId}:
+    get:
+      summary: Get batch status and DevCred calculation
+      operationId: getBatch
+      parameters:
+        - in: path
+          name: batchId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Batch details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevCredCalculationResult'
+        '404':
+          description: Batch not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /batches/{batchId}/mint:
+    post:
+      summary: Mint DevCred for approved batch
+      operationId: mintDevCred
+      parameters:
+        - in: path
+          name: batchId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                auditFactor:
+                  type: number
+                approvedBy:
+                  type: string
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: DevCred minted
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  batchId:
+                    type: string
+                  partnerId:
+                    type: string
+                  mintedDevCred:
+                    type: number
+                  walletId:
+                    type: string
+                  newBalance:
+                    type: number
+                  status:
+                    type: string
+                    example: minted
+        '400':
+          description: Cannot mint
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /partners/{partnerId}/wallet:
+    get:
+      summary: Get DevCred wallet
+      operationId: getWallet
+      parameters:
+        - in: path
+          name: partnerId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Wallet details
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevCredWallet'
+        '404':
+          description: Wallet not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /wallets/{walletId}/spend:
+    post:
+      summary: Spend DevCred
+      operationId: spendDevCred
+      parameters:
+        - in: path
+          name: walletId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - amount
+                - purposeId
+              properties:
+                amount:
+                  type: number
+                purposeId:
+                  type: string
+                description:
+                  type: string
+                vendorId:
+                  type: string
+      responses:
+        '201':
+          description: Spend record created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevCredSpendRecord'
+        '400':
+          description: Invalid spend
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+        '409':
+          description: Insufficient balance or conflict
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /spends/{spendId}:
+    get:
+      summary: Get DevCred spend record
+      operationId: getSpend
+      parameters:
+        - in: path
+          name: spendId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Spend record
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DevCredSpendRecord'
+        '404':
+          description: Spend not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /partners/{partnerId}/revoke:
+    post:
+      summary: Revoke DevCred for a partner
+      operationId: revokeDevCred
+      parameters:
+        - in: path
+          name: partnerId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - reason
+                - amount
+              properties:
+                reason:
+                  type: string
+                  enum: [fraud, misclassification, policy_violation]
+                amount:
+                  type: number
+                notes:
+                  type: string
+      responses:
+        '200':
+          description: DevCred revoked
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  partnerId:
+                    type: string
+                  walletId:
+                    type: string
+                  revokedAmount:
+                    type: number
+                  newBalance:
+                    type: number
+                  status:
+                    type: string
+                    example: revoked
+        '400':
+          description: Cannot revoke
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /devcred/purposes:
+    get:
+      summary: List allowed DevCred purposes
+      operationId: listPurposes
+      responses:
+        '200':
+          description: List of purposes
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  purposes:
+                    type: array
+                    items:
+                      $ref: '#/components/schemas/Purpose'
