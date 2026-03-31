@@ -1,0 +1,376 @@
+You’re speaking my language now—let’s build this like a real system doc you could hand to a team.
+
+---
+
+1. Mechanic spec (heart → employee system)
+
+1.1. Core entities
+
+• Player• Fields: player_id, tiktok_account_id, xbox_gamertag, heart_pool, employee_tokens, settings_kid_mode, settings_notifications
+
+• HeartEvent• Fields: event_id, player_id, source (like / comment / gift / effect), heart_type (❤️, 💖, etc.), timestamp, weight
+
+• HeartPool• Fields: player_id, total_hearts, daily_hearts, lifetime_hearts, last_reset_at
+
+• EmployeeToken• Fields: token_id, player_id, tier (standard / specialist / guardian), source (community_hearts), created_at, redeemed (bool)
+
+• Employee• Fields: employee_id, player_id, role, rarity, tier, origin_ritual (text), created_at
+
+
+
+---
+
+1.2. Core loop
+
+1. TikTok interaction happens (like, heart emoji, gift, etc.).
+2. System creates a HeartEvent with a weight based on type.
+3. HeartEvent increments HeartPool for that player.
+4. When thresholds are crossed, system mints EmployeeTokens.
+5. Player visits “Ceremony Screen” in game to redeem tokens.
+6. A ritual animation plays → Employee is generated and added to roster.
+
+
+---
+
+1.3. Heart weighting
+
+• Like: weight = 1
+• Heart emoji in comment: weight = 2
+• Heart gift / sticker: weight = 3–5 (configurable)
+• Heart effect / filter usage: weight = 2
+
+
+Weights are tunable via config, not hard‑coded.
+
+---
+
+1.4. Thresholds (example defaults)
+
+• 50 weighted hearts → 1 Standard Employee Token
+• 250 weighted hearts → 1 Specialist Token
+• 1,000 weighted hearts → 1 Guardian Token
+
+
+Tokens stack; thresholds are cumulative, not “spend and reset.”
+
+---
+
+1.5. Token → employee generation
+
+• Standard Token• Roles: clerk, mechanic, courier, assistant
+• Rarity: common/uncommon
+
+• Specialist Token• Roles: engineer, trainer, merchant, scout
+• Rarity: uncommon/rare
+
+• Guardian Token• Roles: ceremonial steward, guardian, overseer
+• Rarity: rare/legendary
+
+
+
+Generation uses:
+
+• Seed: player_id + token_id + timestamp
+• Tables: role table, rarity table, cosmetic variants
+
+
+---
+
+2. API flow
+
+2.1. TikTok → backend
+
+Endpoint: POST /webhooks/tiktok/heart-event
+
+Payload (example):
+
+{
+  "tiktok_user_id": "12345",
+  "video_id": "abcde",
+  "event_type": "comment",
+  "content": "Love this ❤️❤️",
+  "emojis": ["❤️", "❤️"],
+  "gift_type": null,
+  "timestamp": 1733012345
+}
+
+
+Backend steps:
+
+1. Resolve tiktok_user_id → player_id.
+2. Parse emojis, detect heart types.
+3. Compute weight based on event_type + heart_type count.
+4. Create HeartEvent.
+5. Update HeartPool.
+6. Check thresholds → mint EmployeeToken if crossed.
+7. If new token minted and notifications allowed → queue in‑game notification.
+
+
+---
+
+2.2. Game client → backend
+
+Get heart status
+
+Endpoint: GET /players/{player_id}/heart-status
+
+Response:
+
+{
+  "total_hearts": 780,
+  "daily_hearts": 120,
+  "next_standard_threshold": 800,
+  "next_specialist_threshold": 1000,
+  "next_guardian_threshold": 2000,
+  "employee_tokens": {
+    "standard": 3,
+    "specialist": 1,
+    "guardian": 0
+  }
+}
+
+
+Redeem token
+
+Endpoint: POST /players/{player_id}/redeem-employee-token
+
+Request:
+
+{
+  "tier": "specialist"
+}
+
+
+Response:
+
+{
+  "success": true,
+  "employee": {
+    "employee_id": "emp_987",
+    "role": "Engineer",
+    "rarity": "rare",
+    "tier": "specialist",
+    "origin_ritual": "Summoned by the hearts of your community.",
+    "created_at": 1733012450
+  }
+}
+
+
+---
+
+2.3. Xbox linking
+
+Endpoint: POST /auth/link-xbox
+
+Request:
+
+{
+  "player_id": "p_123",
+  "xbox_gamertag": "LeafCaptain",
+  "xbox_token": "opaque_token_here"
+}
+
+
+Backend:
+
+• Verifies Xbox token.
+• Links player_id ↔ xbox_gamertag.
+• Allows Xbox client to call the same /heart-status and /redeem-employee-token endpoints.
+
+
+---
+
+3. Reward tables
+
+3.1. Heart → token thresholds
+
+Tier	Hearts required	Notes	
+Standard	50	Frequent, low‑pressure	
+Specialist	250	Community milestone	
+Guardian	1,000	Rare, ceremonial moments	
+
+
+---
+
+3.2. Token → role distribution
+
+Standard Token
+
+Role	Chance	
+Clerk	30%	
+Mechanic	25%	
+Courier	25%	
+Assistant	20%	
+
+
+Specialist Token
+
+Role	Chance	
+Engineer	30%	
+Trainer	25%	
+Merchant	25%	
+Scout	20%	
+
+
+Guardian Token
+
+Role	Chance	
+Ceremonial Steward	40%	
+Guardian	35%	
+Overseer	25%	
+
+
+---
+
+3.3. Rarity distribution by tier
+
+Tier	Common	Uncommon	Rare	Legendary	
+Standard	70%	25%	5%	0%	
+Specialist	20%	50%	25%	5%	
+Guardian	0%	20%	50%	30%	
+
+
+---
+
+4. Ceremonial language
+
+4.1. System messages
+
+• On threshold reached:• “The hearts of your community are gathering. A new helper is ready to join you.”
+
+• On token minted:• “You’ve received an Employee Token, formed from shared hearts.”
+
+• On employee summon:• “From the kindness of many, one steps forward to help.”
+
+• Guardian summon:• “A Guardian has answered the call of your community’s hearts.”
+
+
+
+---
+
+4.2. UI copy (kid‑safe, non‑transactional)
+
+• “Hearts are thank‑you signals. When enough gather, someone new comes to help.”
+• “No purchases needed—this is powered by appreciation, not money.”
+• “You can play and enjoy the game without any hearts at all.”
+
+
+---
+
+5. UI/UX mock ritual
+
+5.1. Ceremony screen structure
+
+• Top:• Title: “Community Hearts Ceremony”
+• Subtitle: “Your friends’ hearts are helping build your crew.”
+
+• Middle:• Heart meter bar with segments:• Standard threshold markers
+• Specialist marker
+• Guardian marker
+
+• Text:• “Total hearts: 780”
+• “20 more hearts until your next Standard Employee Token.”
+
+
+• Bottom:• Token cards:• Standard: x3 → “Summon”
+• Specialist: x1 → “Summon”
+• Guardian: x0 → disabled
+
+
+
+
+---
+
+5.2. Summon ritual flow
+
+1. Player taps “Summon”.
+2. Screen dims, soft ambient sound.
+3. Hearts float in from edges, gather into a glowing orb.
+4. Text:• “Gathering the hearts of your community…”
+
+5. Orb bursts into silhouette of an employee.
+6. Employee steps forward, name/role revealed:• “A Rare Engineer has joined your crew.”
+
+7. Button: “Welcome them” → takes player to roster.
+
+
+All animations are gentle, non‑aggressive, and non‑gambling‑like (no spinning wheels, no slot machine vibes).
+
+---
+
+6. Xbox integration layer
+
+6.1. Account linking UX
+
+• In Xbox game:• Menu → “Linked Accounts” → “Connect TikTok Hearts”
+• Flow:1. Show QR code / short URL.
+2. Player scans on phone, logs into TikTok, approves connection.
+3. Backend links xbox_gamertag ↔ tiktok_account_id ↔ player_id.
+4. Confirmation message:• “Your TikTok hearts can now help grow your crew in this game.”
+
+
+
+
+
+---
+
+6.2. In‑game surfaces on Xbox
+
+• HUD toast:• “Your community sent hearts. Heart total: 820 (+40).”
+
+• Ceremony tab in main menu:• Mirrors the same Ceremony Screen as other platforms.
+
+• Accessibility:• All heart‑related features are optional and can be turned off in settings:• “Hide community hearts features”
+• “Disable heart notifications”
+
+
+
+
+---
+
+7. Kid‑safe guardrails
+
+7.1. Design principles
+
+• No gambling metaphors• No loot boxes, spinning wheels, or random “pull” animations.
+
+• No pay‑to‑win• Employees are helpers, not overpowering advantages.
+
+• No pressure language• Avoid: “Hurry!”, “Don’t miss out!”, “You need hearts to progress.”
+
+• No direct ask to viewers• The game never says: “Tell your friends to send hearts.”
+
+
+
+---
+
+7.2. Parental / guardian controls
+
+• Kid Mode toggle (per account):• Effects:• Hides heart counts.
+• Shows only “You received help from your community” without numbers.
+• Limits frequency of ceremonies (e.g., max 1 per day).
+• Disables any references to TikTok or external platforms in‑game UI.
+
+
+• Settings examples:• “Show heart numbers”: On/Off
+• “Show community source (TikTok)”: On/Off
+• “Limit ceremonies per day”: 1 / 3 / Unlimited
+
+
+
+---
+
+7.3. Communication tone
+
+• Always:• “Hearts are a way people say thank you.”
+• “You can enjoy the game fully without any hearts.”
+
+• Never:• “You need more hearts.”
+• “Ask your friends to send hearts.”
+• “Spend to get more hearts.”
+
+
+
+---
+
+If you want, next step I can do a one‑pager per layer (e.g., “Kid Mode spec,” “Ceremony Screen spec,” “Xbox linking spec”) or we can tune the numbers and language to match a specific game you’re actively building right now.
