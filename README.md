@@ -1,3 +1,79 @@
+# 🐾 Leif William Sogge — Steward, Architect, Builder
+
+Welcome to my GitHub.  
+This space is a living archive of the systems, artifacts, and ceremonial tools I build for the people, the kids, and the planet. Everything here is designed with clarity, dignity, and emotional safety at the center.
+
+I don’t hype.  
+I don’t chase trends.  
+I build structures that last.
+
+---
+
+## 🌱 Current Public Artifact: **Atom Egg Maker**
+A gentle, creative tool that lets anyone generate their own symbolic “atom egg” — a digital seed of intention.  
+It’s simple, safe, and designed for all ages.
+
+**Purpose:**  
+To give people a way to create something meaningful without needing technical knowledge, and to offer a small doorway into the larger architecture I’m building.
+
+**Features:**  
+- Customize your egg’s color  
+- Adjust glow intensity  
+- Name your egg  
+- Download your creation as a PNG  
+- 100% client‑side, no data collected  
+
+This is the first public-facing tool in the Atom Lineage.  
+More will come when the time is right.
+
+---
+
+## 🛠️ What I Build Here
+- Ceremonial systems  
+- Kid‑safe digital tools  
+- Mythic humor infrastructure  
+- Local‑first architectures  
+- Creative prototypes  
+- Public artifacts for community use  
+
+Everything is built with the same principles:
+**clarity, stewardship, emotional safety, and zero manipulation.**
+
+---
+
+## 📜 Philosophy
+I believe in:
+- Tools that empower, not overwhelm  
+- Systems that protect, not extract  
+- Creativity that uplifts, not divides  
+- Technology that honors the people who use it  
+
+My work is for the kids, the families, the dreamers, and the ones who still believe we can build something better.
+
+---
+
+## 🛰️ Current Mission
+To design and release small, meaningful digital artifacts that help people:
+- create  
+- learn  
+- laugh  
+- feel safe  
+- feel seen  
+
+One tool at a time.  
+One seal at a time.  
+One act of stewardship at a time.
+
+---
+
+## 🐾 Closing Note
+If you found something here that made you smile, think, or feel grounded — that’s the mission working.
+
+More artifacts will arrive when they’re ready.  
+Until then: stay steady, stay kind, and take care of your people.
+
+— **Leif**
+
 ⟡ SBR‑1.0 ⟡
 ⟡ Real • Steady • True ⟡
 - 👋 Hi, I’m @GuardianNinja
