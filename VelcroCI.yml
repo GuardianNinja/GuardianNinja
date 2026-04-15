@@ -1,0 +1,54 @@
+name: VelcroCI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  velcro-system-check:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: |
+          pip install pyyaml numpy
+
+      - name: Load NanoVelcro config
+        id: config
+        run: |
+          echo "Loading nanovelcro.yml..."
+          python - << 'EOF'
+          import yaml, json
+          with open("nanovelcro.yml", "r") as f:
+              cfg = yaml.safe_load(f)
+          print("::set-output name=cfg::" + json.dumps(cfg))
+          EOF
+
+      - name: Run NanoVelcro system with config
+        run: |
+          echo "Starting NanoVelcro system..."
+          python nanovelcro.py --config nanovelcro.yml
+
+      - name: Archive support logs
+        if: always()
+        run: |
+          mkdir -p artifacts
+          cp support_logs.txt artifacts/support_logs.txt || true
+
+      - name: Upload logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: velcro-support-logs
+          path: artifacts/
