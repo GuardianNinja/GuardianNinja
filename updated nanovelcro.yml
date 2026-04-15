@@ -1,0 +1,40 @@
+nanovelcro:
+  user_type: "adult"        # "adult" or "kid"
+  emergency_password: null  # set via secure secret store
+  biometric_store:
+    fingerprint: null       # hashed fingerprint string
+
+  crypto:
+    key: null               # optional 16‑byte symmetric key (hex or base64)
+
+  thresholds:
+    gyro_threshold_adult: 0.2
+    gyro_threshold_kid: 0.1
+
+  monitoring:
+    enabled: true
+    interval_seconds: 5
+    instability_trigger_count: 2
+
+  power:
+    power_ok: true
+
+  rng:
+    seed: null              # optional deterministic seed for testing
+
+  zero_gravity_simulation:
+    duration: 10.0
+    time_step: 0.1
+
+  logging:
+    level: "INFO"
+    logger_name: "NanoVelcro"
+
+  safety:
+    encryption_validation: true
+    gyro_check_enabled: true
+
+  override:
+    require_biometric: true
+    require_emergency_password: true
+    log_overrides: true
