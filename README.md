@@ -72,6 +72,57 @@ If you found something here that made you smile, think, or feel grounded — tha
 More artifacts will arrive when they’re ready.  
 Until then: stay steady, stay kind, and take care of your people.
 ---
+# 🌍 Jarvondis 3.1 — World Stack Edition
+### Unified Sovereign Control Plane + Planetary Operating Layer
+
+Jarvondis 3.1 extends the original Jarvondis 3.0 Sovereign Control Plane with a
+full **World Stack**, enabling global dashboards, VR world experiences,
+multi‑tenant admin stations, distributed mesh infrastructure, and a unified
+signals router for weather, time, alerts, and overlays.
+
+This repository contains:
+
+- **Sovereign Core** (tamper‑proofing, MFA, consensus, RBAC, provenance)
+- **World Stack** (planetary dashboards, overlays, trip comparison engine)
+- **Admin Stations** (weather, news, radio, emergency, mesh ops, super‑admin)
+- **Security Layer** (pyramid firewall, boundary guards, isolation)
+- **Distributed Mesh** (satellite logic mesh + regional edge nodes)
+- **External Integrations** (weather providers, time zones, alert feeds)
+- **Gaming Layer** (sovereign‑governed engine + rituals)
+- **Compliance Layer** (legal module, audit exports, schemas)
+- **Documentation Suite** (manifesto, protocols, world stack spec)
+
+---
+
+## 🧭 Architecture Overview
+
+Jarvondis 3.1 is organized into seven planetary layers:
+
+1. **Experience & World Layer**  
+   VR sandbox, world rulesets, seasonal atmospheres, global dashboard entry.
+
+2. **Global Dashboards & Views**  
+   Orbital → Nation → State → Region → City views + overlays.
+
+3. **Admin & Governance Layer**  
+   Multi‑tenant station control rooms, alert workflow, permissions engine.
+
+4. **Security & Access Control**  
+   Double‑diamond rotating pyramid firewall, MFA, isolation, rate limiting.
+
+5. **Logic Routing & Signals Layer**  
+   Global signals router, Turbo Stack, uplink tokens, AI tools engine.
+
+6. **Distributed Mesh & Edge Infrastructure**  
+   Crystal Core satellite mesh + regional edge nodes.
+
+7. **External Data & AI Models**  
+   Weather, time, alerts, foundation models, vector memory.
+
+---
+
+## 📦 Repository Structure
+
 
 1. System overview
 
