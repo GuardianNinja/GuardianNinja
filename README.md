@@ -1,5 +1,5 @@
 # 🐾 Leif William Sogge — Steward, Architect, Builder
-
+This repository contains the core architecture for the Unified Platform powering University, Legacy Game Studios, and Space‑LEAF. See SPEC.md for full system design.
 Welcome to my GitHub.  
 This space is a living archive of the systems, artifacts, and ceremonial tools I build for the people, the kids, and the planet. Everything here is designed with clarity, dignity, and emotional safety at the center.
 
