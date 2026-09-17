@@ -1,4 +1,3 @@
----
 
 CHANGELOG.md — Captain’s Registry
 
